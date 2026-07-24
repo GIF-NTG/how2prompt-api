@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -21,13 +22,11 @@ import tools.jackson.databind.ObjectMapper;
 import java.io.IOException;
 
 /**
- * Filter chain stateless + JWT filter (chưa cần OAuth2 client ở đây — OAuth2 login flow
- * riêng của US-1.2 nối vào Ngày 1 Tuần 2, không đụng file này).
+ * Stateless JWT filter chain. Auth endpoints (register/login/refresh/logout/oauth)
+ * public; mọi API khác yêu cầu Bearer access token.
  * <p>
- * Chưa cấu hình OAuth2 Client / OAuth2 Login trong SecurityFilterChain vì Ngày 3-4 chỉ
- * làm "nền móng" JWT; @EnableWebSecurity + permitAll("/api/v1/auth/**") là đủ để Ngày 5-6
- * thêm AuthController (/auth/register, /auth/login, /auth/refresh) mà không phải sửa file
- * này.
+ * Google OAuth dùng luồng GIS id_token (POST /auth/oauth/google) — không bật
+ * Spring OAuth2 Login / Authorization Code trên backend.
  */
 @Configuration
 @EnableWebSecurity
@@ -41,6 +40,9 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
+            "/v3/api-docs",
+            "/swagger-resources/**",
+            "/webjars/**",
             "/actuator/health"
     };
 
@@ -56,6 +58,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_PATHS).permitAll()
