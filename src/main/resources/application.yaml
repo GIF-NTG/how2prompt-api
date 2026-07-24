@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: how2prompt
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    use-root-path: true
+
+how2prompt:
+  jwt:
+    issuer: how2prompt
+    access-token-ttl: 15m
+    refresh-token-ttl: 30d
+    # local: ?? tr?ng 2 d�ng d??i -> JwtConfig t? sinh c?p kho� RSA t?m khi ch?y
+    #        `mvn spring-boot:run` (xem log WARN l�c start app).
+    # dev/prod: B?T BU?C set qua bi?n m�i tr??ng JWT_PRIVATE_KEY_PEM / JWT_PUBLIC_KEY_PEM
+    #        (ho?c secret manager t??ng ?ng) ? KH�NG hard-code key th?t v�o file yml n�y.
+    private-key-pem: ${JWT_PRIVATE_KEY_PEM:}
+    public-key-pem: ${JWT_PUBLIC_KEY_PEM:}
