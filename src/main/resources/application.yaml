@@ -32,9 +32,9 @@ how2prompt:
     issuer: how2prompt
     access-token-ttl: 15m
     refresh-token-ttl: 30d
-    # local: ?? tr?ng 2 dòng d??i -> JwtConfig t? sinh c?p khoá RSA t?m khi ch?y
-    #        `mvn spring-boot:run` (xem log WARN lúc start app).
-    # dev/prod: B?T BU?C set qua bi?n môi tr??ng JWT_PRIVATE_KEY_PEM / JWT_PUBLIC_KEY_PEM
-    #        (ho?c secret manager t??ng ?ng) ? KHÔNG hard-code key th?t vào file yml này.
+    # local: ?? tr?ng 2 dï¿½ng d??i -> JwtConfig t? sinh c?p khoï¿½ RSA t?m khi ch?y
+    #        `mvn spring-boot:run` (xem log WARN lï¿½c start app).
+    # dev/prod: B?T BU?C set qua bi?n mï¿½i tr??ng JWT_PRIVATE_KEY_PEM / JWT_PUBLIC_KEY_PEM
+    #        (ho?c secret manager t??ng ?ng) ? KHï¿½NG hard-code key th?t vï¿½o file yml nï¿½y.
     private-key-pem: ${JWT_PRIVATE_KEY_PEM:}
     public-key-pem: ${JWT_PUBLIC_KEY_PEM:}
