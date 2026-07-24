@@ -1,0 +1,16 @@
+.git
+.idea
+.vscode
+*.iml
+*.iws
+*.ipr
+target
+.env
+.env.*
+!.env.example
+HELP.md
+*.md
+.DS_Store
+agent
+**/test/**
+src/test
