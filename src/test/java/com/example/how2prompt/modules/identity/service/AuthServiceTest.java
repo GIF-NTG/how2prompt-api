@@ -2,6 +2,7 @@ package com.example.how2prompt.modules.identity.service;
 
 import com.example.how2prompt.common.exception.ConflictException;
 import com.example.how2prompt.modules.identity.dto.RegisterRequest;
+import com.example.how2prompt.modules.identity.dto.RegisterResponse;
 import com.example.how2prompt.modules.identity.entity.User;
 import com.example.how2prompt.modules.identity.entity.Workspace;
 import com.example.how2prompt.modules.identity.entity.WorkspaceMember;
@@ -59,7 +60,7 @@ class AuthServiceTest {
         when(workspaceRepository.save(any(Workspace.class))).thenReturn(savedWorkspace);
 
         // Act
-        User result = authService.register(request);
+        RegisterResponse result = authService.register(request);
 
         // Assert
         assertThat(result).isNotNull();
