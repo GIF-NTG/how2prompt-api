@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -27,9 +28,12 @@ import java.io.IOException;
  * <p>
  * Google OAuth dùng luồng GIS id_token (POST /auth/oauth/google) — không bật
  * Spring OAuth2 Login / Authorization Code trên backend.
+ * <p>
+ * {@link EnableMethodSecurity} bật {@code @PreAuthorize} (vd. admin template CRUD).
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
