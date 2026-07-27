@@ -58,9 +58,9 @@ public class JwtConfig {
 
     private String stripPem(String pem) {
         return pem
-                .replace("\\n", "")
-                .replaceAll("-----BEGIN (.*)-----", "")
-                .replaceAll("-----END (.*)-----", "")
+                .replace("\\n", "\n")
+                .replaceAll("-----BEGIN [^-]+-----", "")
+                .replaceAll("-----END [^-]+-----", "")
                 .replaceAll("\\s", "");
     }
 
