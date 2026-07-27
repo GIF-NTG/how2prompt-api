@@ -1,75 +1,24 @@
-package com.example.how2prompt.modules.catalog.entity;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+package com.example.how2prompt.modules.catalog.dto.response;
 
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
-@Entity
-@Table(name = "ai_models")
-public class AiModel {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+public class AiModelResponse {
     private UUID id;
-
-    @Column(nullable = false, unique = true)
     private String code;
-
-    @Column(nullable = false)
     private String name;
-
-    @Column(nullable = false)
     private String provider;
-
-    @Column(name = "model_type", nullable = false)
     private String modelType;
-
     private String description;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
     private Map<String, Object> capabilities;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "default_config", columnDefinition = "jsonb")
     private Map<String, Object> defaultConfig;
-
-    @Column(name = "icon_url")
     private String iconUrl;
-
-    @Column(name = "doc_url")
     private String docUrl;
-
-    @Column(name = "is_active", nullable = false)
-    private Boolean isActive = true;
-
-    @Column(name = "sort_order", nullable = false)
-    private Integer sortOrder = 0;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
+    private Boolean isActive;
+    private Integer sortOrder;
     private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
-    @Column(name = "created_by")
-    private UUID createdBy;
-
-    @Column(name = "updated_by")
-    private UUID updatedBy;
-
-    // Constructors
-    public AiModel() {
-    }
 
     // Getters and Setters
     public UUID getId() {
@@ -182,21 +131,5 @@ public class AiModel {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
-    }
-
-    public UUID getCreatedBy() {
-        return createdBy;
-    }
-
-    public void setCreatedBy(UUID createdBy) {
-        this.createdBy = createdBy;
-    }
-
-    public UUID getUpdatedBy() {
-        return updatedBy;
-    }
-
-    public void setUpdatedBy(UUID updatedBy) {
-        this.updatedBy = updatedBy;
     }
 }

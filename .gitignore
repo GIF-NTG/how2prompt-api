@@ -35,3 +35,26 @@ build/
 .env.prod
 .env.*.local
 agent
+
+# Java
+target/
+*.class
+*.jar
+.gradle/
+build/
+
+# Java
+target/
+*.class
+*.jar
+.gradle/
+build/
+
+
+#Agent
+.claude/
+.cursor
+.opencode
+.specify
+.gitmodules
+how2prompt-agentic
