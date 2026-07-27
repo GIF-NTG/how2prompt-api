@@ -22,6 +22,8 @@ public enum ErrorCode {
 
     // --- Validation / Request ---
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "Dữ liệu không hợp lệ."),
+    /** Lỗi field-level từ template variable / form động (Epic 3). */
+    VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Dữ liệu form không hợp lệ."),
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "Yêu cầu không hợp lệ."),
     INVALID_ARGUMENT(HttpStatus.BAD_REQUEST, "Tham số không hợp lệ."),
     MALFORMED_REQUEST(HttpStatus.BAD_REQUEST, "Định dạng request không hợp lệ."),
