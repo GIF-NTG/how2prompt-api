@@ -16,9 +16,39 @@ spring:
       hibernate:
         format_sql: true
 
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          max-wait: 1000ms
+
   flyway:
     enabled: true
     baseline-on-migrate: true
+
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+    default-encoding: UTF-8
 
 springdoc:
   api-docs:
@@ -35,6 +65,26 @@ how2prompt:
     # local: để trống 2 dòng dưới -> JwtConfig tự sinh cặp khoá RSA tạm khi chạy
     #        `mvn spring-boot:run` (xem log WARN lúc start app).
     # dev/prod: BẮT BUỘC set qua biến môi trường JWT_PRIVATE_KEY_PEM / JWT_PUBLIC_KEY_PEM
-    #        (hoặc secret manager tương ứng) -> KHÔNG hard-code key thật vào file yml này.
+    #        (hoặc secret manager tương ứng) — KHÔNG hard-code key thật vào file yml này.
     private-key-pem: ${JWT_PRIVATE_KEY_PEM:}
     public-key-pem: ${JWT_PUBLIC_KEY_PEM:}
+
+  auth:
+    # Google Identity Services — audience (client ID) để verify id_token
+    google-client-id: ${GOOGLE_CLIENT_ID:}
+    # Cookie refresh_token (httpOnly). Prod HTTPS: AUTH_COOKIE_SECURE=true
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
+    cookie-same-site: Strict
+    cookie-path: /api/v1/auth
+    cookie-name: refresh_token
+    # CORS origins cho SPA (credentials). Ví dụ: http://localhost:5173
+    cors-allowed-origins: ${AUTH_CORS_ORIGINS:http://localhost:5173}
+
+  mail:
+    from: ${MAIL_FROM:noreply@how2prompt.local}
+    from-name: ${MAIL_FROM_NAME:How2Prompt}
+    frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+    verify-email-path: /verify-email
+    # Token verify lưu Redis (SHA-256), không lưu plain token
+    verification-token-ttl: ${EMAIL_VERIFY_TTL:24h}
+    resend-cooldown: ${EMAIL_RESEND_COOLDOWN:60s}
