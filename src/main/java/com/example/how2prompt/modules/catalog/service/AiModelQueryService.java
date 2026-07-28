@@ -1,5 +1,6 @@
 package com.example.how2prompt.modules.catalog.service;
 
+import com.example.how2prompt.common.exception.BadRequestException;
 import com.example.how2prompt.common.exception.ResourceNotFoundException;
 import com.example.how2prompt.modules.catalog.dto.response.AiModelSummaryResponse;
 import com.example.how2prompt.modules.catalog.entity.AiModel;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -35,8 +37,17 @@ public class AiModelQueryService {
     }
 
     public AiModelSummaryResponse getByIdOrThrow(UUID id) {
-        AiModel aiModel = aiModelRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("AiModel", id));
+        return mapToSummary(findByIdOrThrow(id));
+    }
+
+    public AiModelSummaryResponse getActiveByIdOrThrow(UUID id) {
+        AiModel aiModel = findByIdOrThrow(id);
+        if (!Boolean.TRUE.equals(aiModel.getIsActive())) {
+            throw new BadRequestException(
+                    "AI model is inactive.",
+                    Map.of("aiModelId", id)
+            );
+        }
         return mapToSummary(aiModel);
     }
 
@@ -53,6 +64,11 @@ public class AiModelQueryService {
         return aiModelRepository.findAll().stream()
                 .map(this::mapToSummary)
                 .collect(Collectors.toList());
+    }
+
+    private AiModel findByIdOrThrow(UUID id) {
+        return aiModelRepository.findById(id)
+                .orElseThrow(() -> ResourceNotFoundException.of("AiModel", id));
     }
 
     private AiModelSummaryResponse mapToSummary(AiModel entity) {
