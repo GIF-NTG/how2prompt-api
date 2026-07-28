@@ -11,5 +11,7 @@ public interface TemplateModelRepository extends JpaRepository<TemplateModel, Te
 
     List<TemplateModel> findByIdTemplateId(UUID templateId);
 
+    List<TemplateModel> findByIdTemplateIdIn(List<UUID> templateIds);
+
     void deleteByIdTemplateId(UUID templateId);
 }

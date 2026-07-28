@@ -1,5 +1,6 @@
 package com.example.how2prompt.modules.catalog.service;
 
+import com.example.how2prompt.common.exception.ResourceNotFoundException;
 import com.example.how2prompt.modules.catalog.dto.response.AiModelSummaryResponse;
 import com.example.how2prompt.modules.catalog.entity.AiModel;
 import com.example.how2prompt.modules.catalog.repository.AiModelRepository;
@@ -35,8 +36,17 @@ public class AiModelQueryService {
 
     public AiModelSummaryResponse getByIdOrThrow(UUID id) {
         AiModel aiModel = aiModelRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("AiModel not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("AiModel", id));
         return mapToSummary(aiModel);
+    }
+
+    public UUID resolveIdByCode(String code) {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        return aiModelRepository.findByCode(code)
+                .map(AiModel::getId)
+                .orElseThrow(() -> new ResourceNotFoundException("AiModel", code));
     }
     
     public List<AiModelSummaryResponse> findAll() {
