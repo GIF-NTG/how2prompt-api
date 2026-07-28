@@ -347,7 +347,10 @@ public class TemplateAdminService {
         if (template.getCurrentVersionId() == null) {
             throw new BadRequestException("Template chưa có current version.");
         }
-        return templateVersionRepository.findById(template.getCurrentVersionId())
+        return templateVersionRepository.findByIdAndTemplateId(
+                        template.getCurrentVersionId(),
+                        template.getId()
+                )
                 .or(() -> templateVersionRepository.findByTemplateIdAndCurrentTrue(template.getId()))
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy current version của template."));
     }

@@ -62,6 +62,7 @@ public class AiModel {
     @Column(name = "updated_at", nullable = false, updatable = false, insertable = false)
     private LocalDateTime updatedAt;
 
+
     // Constructors
     public AiModel() {
     }
