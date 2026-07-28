@@ -1,8 +1,8 @@
-package com.example.how2prompt.modules.template.service;
+package com.example.how2prompt.modules.prompt.service;
 
 import com.example.how2prompt.modules.template.dto.RenderResult;
-import com.example.how2prompt.modules.template.entity.GeneratedPrompt;
-import com.example.how2prompt.modules.template.repository.GeneratedPromptRepository;
+import com.example.how2prompt.modules.prompt.entity.GeneratedPrompt;
+import com.example.how2prompt.modules.prompt.repository.GeneratedPromptRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
