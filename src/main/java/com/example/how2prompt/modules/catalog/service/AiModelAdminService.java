@@ -32,8 +32,8 @@ public class AiModelAdminService {
         model.setProvider(request.getProvider());
         model.setModelType(request.getModelType());
         model.setDescription(request.getDescription());
-        model.setCapabilities(request.getCapabilities());
-        model.setDefaultConfig(request.getDefaultConfig());
+        model.setCapabilities(request.getCapabilities() != null ? request.getCapabilities() : java.util.Map.of());
+        model.setDefaultConfig(request.getDefaultConfig() != null ? request.getDefaultConfig() : java.util.Map.of());
         model.setIconUrl(request.getIconUrl());
         model.setDocUrl(request.getDocUrl());
         
@@ -45,9 +45,6 @@ public class AiModelAdminService {
             model.setSortOrder(request.getSortOrder());
         }
 
-        LocalDateTime now = LocalDateTime.now();
-        model.setCreatedAt(now);
-        model.setUpdatedAt(now);
 
         AiModel saved = aiModelRepository.save(model);
         return mapToResponse(saved);
@@ -88,7 +85,6 @@ public class AiModelAdminService {
             model.setSortOrder(request.getSortOrder());
         }
 
-        model.setUpdatedAt(LocalDateTime.now());
         
         AiModel updated = aiModelRepository.save(model);
         return mapToResponse(updated);
