@@ -93,6 +93,18 @@ class TemplateVariableValidatorTest {
                 .isEmpty();
     }
 
+    @Test
+    void validate_booleanRejectsFractionalNumber() {
+        TemplateVariable enabled = variable("enabled", "boolean", true, Map.of());
+
+        assertThat(validator.validate(List.of(enabled), Map.of("enabled", 1.5)))
+                .extracting(FieldError::code)
+                .containsExactly("INVALID_TYPE");
+
+        assertThat(validator.validate(List.of(enabled), Map.of("enabled", 1)))
+                .isEmpty();
+    }
+
     private static TemplateVariable variable(
             String key,
             String inputType,

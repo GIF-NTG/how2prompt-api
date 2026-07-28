@@ -1,11 +1,16 @@
 package com.example.how2prompt.modules.template.service;
 
+import com.example.how2prompt.common.exception.BadRequestException;
+import com.example.how2prompt.modules.catalog.dto.response.AiModelSummaryResponse;
+import com.example.how2prompt.modules.catalog.service.AiModelQueryService;
 import com.example.how2prompt.modules.template.dto.RenderResult;
 import com.example.how2prompt.modules.template.entity.Template;
+import com.example.how2prompt.modules.template.entity.TemplateModelId;
 import com.example.how2prompt.modules.template.entity.TemplateVariable;
 import com.example.how2prompt.modules.template.entity.TemplateVariant;
 import com.example.how2prompt.modules.template.entity.TemplateVersion;
 import com.example.how2prompt.modules.template.exception.TemplateValidationException;
+import com.example.how2prompt.modules.template.repository.TemplateModelRepository;
 import com.example.how2prompt.modules.template.repository.TemplateRepository;
 import com.example.how2prompt.modules.template.repository.TemplateVariableRepository;
 import com.example.how2prompt.modules.template.repository.TemplateVariantRepository;
@@ -36,6 +41,10 @@ class PromptRenderServiceTest {
     private TemplateVariableRepository templateVariableRepository;
     @Mock
     private TemplateVariantRepository templateVariantRepository;
+    @Mock
+    private TemplateModelRepository templateModelRepository;
+    @Mock
+    private AiModelQueryService aiModelQueryService;
 
     private PromptRenderService promptRenderService;
 
@@ -50,6 +59,8 @@ class PromptRenderServiceTest {
                 templateVersionRepository,
                 templateVariableRepository,
                 templateVariantRepository,
+                templateModelRepository,
+                aiModelQueryService,
                 new TemplateVariableValidator()
         );
     }
@@ -93,7 +104,7 @@ class PromptRenderServiceTest {
         TemplateVariant variant = new TemplateVariant();
         variant.setAiModelId(modelId);
         variant.setPromptBodyOverride("OVERRIDE only: {{name}}");
-        variant.setSystemPromptOverride("System override");
+        variant.setSystemPromptOverride("System for {{name}}");
         when(templateVariantRepository.findByTemplateVersionIdAndAiModelId(versionId, modelId))
                 .thenReturn(Optional.of(variant));
 
@@ -105,8 +116,53 @@ class PromptRenderServiceTest {
         );
 
         assertThat(result.renderedPrompt()).isEqualTo("OVERRIDE only: Ada");
-        assertThat(result.systemPrompt()).isEqualTo("System override");
+        assertThat(result.systemPrompt()).isEqualTo("System for Ada");
         assertThat(result.usedVariant()).isTrue();
+    }
+
+    @Test
+    void render_modelNotAssignedToTemplate_throwsBadRequest() {
+        stubTemplateAndVersion("BASE");
+        when(templateModelRepository.existsById(new TemplateModelId(templateId, modelId)))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> promptRenderService.render(templateId, modelId, Map.of(), null))
+                .isInstanceOf(BadRequestException.class)
+                .satisfies(ex -> assertThat(((BadRequestException) ex).getDetails())
+                        .containsEntry("templateId", templateId)
+                        .containsEntry("aiModelId", modelId));
+    }
+
+    @Test
+    void render_currentVersionPointerOutsideTemplate_usesOwnedCurrentVersion() {
+        UUID foreignVersionId = UUID.randomUUID();
+        UUID ownedVersionId = UUID.randomUUID();
+
+        Template template = new Template();
+        template.setId(templateId);
+        template.setCurrentVersionId(foreignVersionId);
+
+        TemplateVersion ownedVersion = new TemplateVersion();
+        ownedVersion.setId(ownedVersionId);
+        ownedVersion.setTemplate(template);
+        ownedVersion.setPromptBody("Owned body");
+        ownedVersion.setCurrent(true);
+
+        when(templateRepository.findById(templateId)).thenReturn(Optional.of(template));
+        when(templateVersionRepository.findByIdAndTemplateId(foreignVersionId, templateId))
+                .thenReturn(Optional.empty());
+        when(templateVersionRepository.findByTemplateIdAndCurrentTrue(templateId))
+                .thenReturn(Optional.of(ownedVersion));
+        stubSupportedModel();
+        when(templateVariableRepository.findByTemplateVersionIdOrderBySortOrderAsc(ownedVersionId))
+                .thenReturn(List.of());
+        when(templateVariantRepository.findByTemplateVersionIdAndAiModelId(ownedVersionId, modelId))
+                .thenReturn(Optional.empty());
+
+        RenderResult result = promptRenderService.render(templateId, modelId, Map.of(), null);
+
+        assertThat(result.templateVersionId()).isEqualTo(ownedVersionId);
+        assertThat(result.renderedPrompt()).isEqualTo("Owned body");
     }
 
     @Test
@@ -163,7 +219,16 @@ class PromptRenderServiceTest {
         version.setTemplate(template);
 
         when(templateRepository.findById(templateId)).thenReturn(Optional.of(template));
-        when(templateVersionRepository.findById(versionId)).thenReturn(Optional.of(version));
+        when(templateVersionRepository.findByIdAndTemplateId(versionId, templateId))
+                .thenReturn(Optional.of(version));
+        stubSupportedModel();
+    }
+
+    private void stubSupportedModel() {
+        when(aiModelQueryService.getActiveByIdOrThrow(modelId))
+                .thenReturn(new AiModelSummaryResponse(modelId, "test-model", "Test Model", null));
+        when(templateModelRepository.existsById(new TemplateModelId(templateId, modelId)))
+                .thenReturn(true);
     }
 
     private static TemplateVariable variable(

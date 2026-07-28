@@ -1,13 +1,17 @@
 package com.example.how2prompt.modules.template.service;
 
+import com.example.how2prompt.common.exception.BadRequestException;
 import com.example.how2prompt.common.exception.ResourceNotFoundException;
+import com.example.how2prompt.modules.catalog.service.AiModelQueryService;
 import com.example.how2prompt.modules.template.dto.FieldError;
 import com.example.how2prompt.modules.template.dto.RenderResult;
 import com.example.how2prompt.modules.template.entity.Template;
+import com.example.how2prompt.modules.template.entity.TemplateModelId;
 import com.example.how2prompt.modules.template.entity.TemplateVariable;
 import com.example.how2prompt.modules.template.entity.TemplateVariant;
 import com.example.how2prompt.modules.template.entity.TemplateVersion;
 import com.example.how2prompt.modules.template.exception.TemplateValidationException;
+import com.example.how2prompt.modules.template.repository.TemplateModelRepository;
 import com.example.how2prompt.modules.template.repository.TemplateRepository;
 import com.example.how2prompt.modules.template.repository.TemplateVariableRepository;
 import com.example.how2prompt.modules.template.repository.TemplateVariantRepository;
@@ -66,6 +70,8 @@ public class PromptRenderService {
     private final TemplateVersionRepository templateVersionRepository;
     private final TemplateVariableRepository templateVariableRepository;
     private final TemplateVariantRepository templateVariantRepository;
+    private final TemplateModelRepository templateModelRepository;
+    private final AiModelQueryService aiModelQueryService;
     private final TemplateVariableValidator templateVariableValidator;
 
     /**
@@ -90,6 +96,7 @@ public class PromptRenderService {
                 .orElseThrow(() -> ResourceNotFoundException.of("Template", templateId));
 
         TemplateVersion version = resolveCurrentVersion(template);
+        validateTargetModel(template.getId(), aiModelId);
         List<TemplateVariable> variables =
                 templateVariableRepository.findByTemplateVersionIdOrderBySortOrderAsc(version.getId());
 
@@ -129,6 +136,9 @@ public class PromptRenderService {
         }
 
         String rendered = renderPlaceholders(promptBody, variableByKey, resolved);
+        String renderedSystemPrompt = systemPrompt != null
+                ? renderPlaceholders(systemPrompt, variableByKey, resolved)
+                : null;
         String normalizedExtra = StringUtils.hasText(extraInstructions) ? extraInstructions.trim() : null;
         if (normalizedExtra != null) {
             rendered = rendered + "\n\n" + normalizedExtra;
@@ -139,7 +149,7 @@ public class PromptRenderService {
                 version.getId(),
                 aiModelId,
                 rendered,
-                systemPrompt,
+                renderedSystemPrompt,
                 usedVariant,
                 Map.copyOf(resolved),
                 normalizedExtra
@@ -148,7 +158,10 @@ public class PromptRenderService {
 
     private TemplateVersion resolveCurrentVersion(Template template) {
         if (template.getCurrentVersionId() != null) {
-            Optional<TemplateVersion> byId = templateVersionRepository.findById(template.getCurrentVersionId());
+            Optional<TemplateVersion> byId = templateVersionRepository.findByIdAndTemplateId(
+                    template.getCurrentVersionId(),
+                    template.getId()
+            );
             if (byId.isPresent()) {
                 return byId.get();
             }
@@ -159,7 +172,24 @@ public class PromptRenderService {
     }
 
     /**
-     * Resolve giá trị cuối cùng per var_key theo quy tắc placeholder (trước khi substitute).
+     * Validate that the selected model exists, is active, and is assigned to the template.
+     */
+    private void validateTargetModel(UUID templateId, UUID aiModelId) {
+        if (aiModelId == null) {
+            return;
+        }
+
+        aiModelQueryService.getActiveByIdOrThrow(aiModelId);
+        if (!templateModelRepository.existsById(new TemplateModelId(templateId, aiModelId))) {
+            throw new BadRequestException(
+                    "AI model is not assigned to this template.",
+                    Map.of("templateId", templateId, "aiModelId", aiModelId)
+            );
+        }
+    }
+
+    /**
+     * Resolve the final value for each var_key before placeholder substitution.
      */
     private static Map<String, Object> resolveValues(
             Map<String, TemplateVariable> variableByKey,

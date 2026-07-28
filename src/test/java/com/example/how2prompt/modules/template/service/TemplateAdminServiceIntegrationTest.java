@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Integration test: createTemplate tạo đúng Template + TemplateVersion v1 + current_version_id.
  */
 @DataJpaTest(properties = {
-        "spring.jpa.hibernate.ddl-auto=validate",
+        "spring.jpa.hibernate.ddl-auto=none",
         "spring.flyway.enabled=true"
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)

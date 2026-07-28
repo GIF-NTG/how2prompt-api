@@ -133,7 +133,8 @@ class TemplateVariableValidator {
             }
         }
         if (raw instanceof Number n) {
-            if (n.intValue() == 0 || n.intValue() == 1) {
+            double value = n.doubleValue();
+            if (Double.compare(value, 0D) == 0 || Double.compare(value, 1D) == 0) {
                 return;
             }
         }
