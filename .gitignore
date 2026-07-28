@@ -57,5 +57,5 @@ build/
 .opencode
 .specify
 .gitmodules
-plan_binh.md
+agent/
 how2prompt-agentic
