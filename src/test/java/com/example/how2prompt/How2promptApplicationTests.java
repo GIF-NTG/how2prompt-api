@@ -1,5 +1,6 @@
 package com.example.how2prompt;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -9,10 +10,11 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(properties = {
-		"spring.data.redis.host=localhost",
-		"spring.data.redis.port=6379",
-		"spring.data.redis.password="
+	"spring.data.redis.host=localhost",
+	"spring.data.redis.port=6379",
+	"spring.data.redis.password="
 })
+// @Disabled("Requires full infrastructure")
 @Testcontainers
 class How2promptApplicationTests {
 
