@@ -50,6 +50,15 @@ public class AiModelQueryService {
         }
         return mapToSummary(aiModel);
     }
+
+    public UUID resolveIdByCode(String code) {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        return aiModelRepository.findByCode(code)
+                .map(AiModel::getId)
+                .orElseThrow(() -> new ResourceNotFoundException("AiModel", code));
+    }
     
     public List<AiModelSummaryResponse> findAll() {
         return aiModelRepository.findAll().stream()
