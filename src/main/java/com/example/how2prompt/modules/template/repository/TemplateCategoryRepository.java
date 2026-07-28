@@ -11,5 +11,7 @@ public interface TemplateCategoryRepository extends JpaRepository<TemplateCatego
 
     List<TemplateCategory> findByIdTemplateId(UUID templateId);
 
+    List<TemplateCategory> findByIdTemplateIdIn(List<UUID> templateIds);
+
     void deleteByIdTemplateId(UUID templateId);
 }

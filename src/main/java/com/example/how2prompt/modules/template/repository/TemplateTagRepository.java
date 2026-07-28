@@ -11,5 +11,7 @@ public interface TemplateTagRepository extends JpaRepository<TemplateTag, Templa
 
     List<TemplateTag> findByIdTemplateId(UUID templateId);
 
+    List<TemplateTag> findByIdTemplateIdIn(List<UUID> templateIds);
+
     void deleteByIdTemplateId(UUID templateId);
 }
