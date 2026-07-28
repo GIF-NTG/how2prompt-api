@@ -21,32 +21,33 @@ public class AiModel {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 60)
     private String code;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 40)
     private String provider;
 
-    @Column(name = "model_type", nullable = false)
+    @Column(name = "model_type", nullable = false, length = 20)
     private String modelType;
 
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column(nullable = false, columnDefinition = "jsonb")
     private Map<String, Object> capabilities;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "default_config", columnDefinition = "jsonb")
+    @Column(name = "default_config", nullable = false, columnDefinition = "jsonb")
     private Map<String, Object> defaultConfig;
 
-    @Column(name = "icon_url")
+    @Column(name = "icon_url", length = 500)
     private String iconUrl;
 
-    @Column(name = "doc_url")
+    @Column(name = "doc_url", length = 500)
     private String docUrl;
 
     @Column(name = "is_active", nullable = false)
@@ -55,10 +56,10 @@ public class AiModel {
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at", nullable = false, updatable = false, insertable = false)
     private LocalDateTime updatedAt;
 
 
