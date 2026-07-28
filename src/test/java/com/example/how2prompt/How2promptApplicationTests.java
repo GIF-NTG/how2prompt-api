@@ -14,7 +14,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 	"spring.data.redis.port=6379",
 	"spring.data.redis.password="
 })
-@Disabled("Requires full infrastructure")
+// @Disabled("Requires full infrastructure")
 @Testcontainers
 class How2promptApplicationTests {
 

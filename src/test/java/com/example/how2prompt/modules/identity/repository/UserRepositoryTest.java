@@ -10,16 +10,13 @@ import org.springframework.test.context.ActiveProfiles;
 import java.time.Instant;
 import java.util.Optional;
 
-import com.example.how2prompt.common.TestcontainersConfig;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
-import org.springframework.context.annotation.Import;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(TestcontainersConfig.class)
 class UserRepositoryTest {
 
     @Autowired

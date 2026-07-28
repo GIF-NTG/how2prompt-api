@@ -57,5 +57,5 @@ build/
 .opencode
 .specify
 .gitmodules
-agent/
+.agent/
 how2prompt-agentic
