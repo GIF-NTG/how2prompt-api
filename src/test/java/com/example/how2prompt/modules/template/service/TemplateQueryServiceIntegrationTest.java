@@ -1,5 +1,6 @@
 package com.example.how2prompt.modules.template.service;
 
+import com.example.how2prompt.common.exception.BadRequestException;
 import com.example.how2prompt.common.security.AuthenticatedUser;
 import com.example.how2prompt.modules.catalog.dto.request.CreateAiModelRequest;
 import com.example.how2prompt.modules.catalog.dto.response.AiModelResponse;
@@ -47,11 +48,13 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.EnabledIfDockerAvailable;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest(properties = {
         "spring.jpa.hibernate.ddl-auto=validate",
@@ -231,13 +234,57 @@ class TemplateQueryServiceIntegrationTest {
     }
 
     @Test
-    void search_templates_withFtsQuery() {
+    void search_templates_withFtsQuerySupportsAllSortModes() {
+        Template featured = templateRepository.findById(tResponse1.id()).orElseThrow();
+        featured.setFeaturedAt(Instant.parse("2026-07-28T00:00:00Z"));
+        featured.setUsageCount(10);
+        templateRepository.save(featured);
+        entityManager.flush();
+        entityManager.clear();
+
+        for (String sort : List.of("newest", "trending", "featured")) {
+            TemplateSearchCriteria criteria = new TemplateSearchCriteria();
+            criteria.setSearch("Java");
+            criteria.setSort(sort);
+
+            PageResponse<TemplateSummaryResponse> page = templateQueryService.search(criteria, false);
+
+            assertThat(page.getItems())
+                    .as("FTS results sorted by %s", sort)
+                    .extracting(TemplateSummaryResponse::getId)
+                    .containsExactly(tResponse1.id());
+        }
+    }
+
+    @Test
+    void search_featuredExcludesTemplatesWithoutFeaturedAt() {
+        Template featured = templateRepository.findById(tResponse1.id()).orElseThrow();
+        featured.setFeaturedAt(Instant.parse("2026-07-28T00:00:00Z"));
+        templateRepository.save(featured);
+        entityManager.flush();
+        entityManager.clear();
+
         TemplateSearchCriteria criteria = new TemplateSearchCriteria();
-        criteria.setSearch("Java");
+        criteria.setSort("featured");
+
         PageResponse<TemplateSummaryResponse> page = templateQueryService.search(criteria, false);
-        // FTS tìm kiếm từ khóa "Java" ở title_i18n / description_i18n
-        assertThat(page.getItems()).hasSize(1);
-        assertThat(page.getItems().get(0).getId()).isEqualTo(tResponse1.id());
+
+        assertThat(page.getItems())
+                .extracting(TemplateSummaryResponse::getId)
+                .containsExactly(tResponse1.id());
+    }
+
+    @Test
+    void search_rejectsLimitOutsideAllowedRange() {
+        TemplateSearchCriteria criteria = new TemplateSearchCriteria();
+        criteria.setLimit(0);
+
+        assertThatThrownBy(() -> templateQueryService.search(criteria, false))
+                .isInstanceOf(BadRequestException.class);
+
+        criteria.setLimit(101);
+        assertThatThrownBy(() -> templateQueryService.search(criteria, false))
+                .isInstanceOf(BadRequestException.class);
     }
 
     @Test
@@ -271,5 +318,21 @@ class TemplateQueryServiceIntegrationTest {
         assertThat(detail.getTags().get(0).getSlug()).isEqualTo("spring-tag");
         assertThat(detail.getModels()).hasSize(1);
         assertThat(detail.getModels().get(0).getCode()).isEqualTo("gpt-4-test");
+    }
+
+    @Test
+    void getDetail_foreignCurrentVersionPointerFallsBackToOwnedVersion() {
+        Template first = templateRepository.findById(tResponse1.id()).orElseThrow();
+        Template second = templateRepository.findById(tResponse2.id()).orElseThrow();
+        UUID ownedVersionId = first.getCurrentVersionId();
+        first.setCurrentVersionId(second.getCurrentVersionId());
+        templateRepository.save(first);
+        entityManager.flush();
+        entityManager.clear();
+
+        TemplateDetailResponse detail =
+                templateQueryService.getDetail(tResponse1.id(), currentUser.userId(), true);
+
+        assertThat(detail.getCurrentVersion().getId()).isEqualTo(ownedVersionId);
     }
 }

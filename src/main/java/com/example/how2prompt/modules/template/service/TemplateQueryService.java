@@ -1,5 +1,6 @@
 package com.example.how2prompt.modules.template.service;
 
+import com.example.how2prompt.common.exception.BadRequestException;
 import com.example.how2prompt.common.exception.ResourceNotFoundException;
 import com.example.how2prompt.common.utils.CursorUtil;
 import com.example.how2prompt.common.utils.CursorUtil.DecodedCursor;
@@ -56,6 +57,8 @@ import java.util.stream.Collectors;
 public class TemplateQueryService {
 
     private static final String STATUS_PUBLISHED = "published";
+    private static final int DEFAULT_LIMIT = 20;
+    private static final int MAX_LIMIT = 100;
 
     private final TemplateRepository templateRepository;
     private final TemplateCategoryRepository templateCategoryRepository;
@@ -73,7 +76,7 @@ public class TemplateQueryService {
      * Tìm kiếm và lọc template công khai/admin.
      */
     public PageResponse<TemplateSummaryResponse> search(TemplateSearchCriteria criteria, boolean isAdmin) {
-        int limit = criteria.getLimit() != null ? criteria.getLimit() : 20;
+        int limit = resolveLimit(criteria);
 
         // Resolve criteria slugs
         UUID categoryId = categoryQueryService.resolveIdBySlug(criteria.getCategory());
@@ -154,7 +157,9 @@ public class TemplateQueryService {
 
         // Lấy version hiện tại
         if (template.getCurrentVersionId() != null) {
-            TemplateVersion version = templateVersionRepository.findById(template.getCurrentVersionId())
+            TemplateVersion version = templateVersionRepository
+                    .findByIdAndTemplateId(template.getCurrentVersionId(), template.getId())
+                    .or(() -> templateVersionRepository.findByTemplateIdAndCurrentTrue(template.getId()))
                     .orElseThrow(() -> new ResourceNotFoundException("TemplateVersion", template.getCurrentVersionId()));
 
             TemplateDetailResponse.TemplateVersionItem versionItem = new TemplateDetailResponse.TemplateVersionItem();
@@ -260,6 +265,9 @@ public class TemplateQueryService {
             if (isPublic != null) {
                 predicates.add(cb.equal(root.get("isPublic"), isPublic));
             }
+            if ("featured".equals(criteria.getSort())) {
+                predicates.add(cb.isNotNull(root.get("featuredAt")));
+            }
 
             // Bộ lọc category
             if (categoryId != null) {
@@ -326,7 +334,7 @@ public class TemplateQueryService {
         // Thiết lập Sort & Pageable
         Sort sort;
         if ("featured".equals(criteria.getSort())) {
-            sort = Sort.by(Sort.Order.desc("featuredAt"), Sort.Order.desc("id"));
+            sort = Sort.by(Sort.Order.desc("featuredAt").nullsLast(), Sort.Order.desc("id"));
         } else if ("trending".equals(criteria.getSort())) {
             sort = Sort.by(Sort.Order.desc("usageCount"), Sort.Order.desc("id"));
         } else {
@@ -334,6 +342,21 @@ public class TemplateQueryService {
         }
 
         return templateRepository.findAll(spec, PageRequest.of(0, limit + 1, sort)).getContent();
+    }
+
+    private static int resolveLimit(TemplateSearchCriteria criteria) {
+        if (criteria == null) {
+            throw new BadRequestException("Search criteria không được để trống.");
+        }
+
+        int limit = criteria.getLimit() != null ? criteria.getLimit() : DEFAULT_LIMIT;
+        if (limit < 1 || limit > MAX_LIMIT) {
+            throw new BadRequestException(
+                    "limit phải nằm trong khoảng 1 đến " + MAX_LIMIT + ".",
+                    Map.of("limit", limit, "min", 1, "max", MAX_LIMIT)
+            );
+        }
+        return limit;
     }
 
     /**
