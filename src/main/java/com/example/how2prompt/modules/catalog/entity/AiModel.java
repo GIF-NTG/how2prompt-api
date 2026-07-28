@@ -61,12 +61,6 @@ public class AiModel {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @Column(name = "created_by")
-    private UUID createdBy;
-
-    @Column(name = "updated_by")
-    private UUID updatedBy;
-
     // Constructors
     public AiModel() {
     }
@@ -182,21 +176,5 @@ public class AiModel {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
-    }
-
-    public UUID getCreatedBy() {
-        return createdBy;
-    }
-
-    public void setCreatedBy(UUID createdBy) {
-        this.createdBy = createdBy;
-    }
-
-    public UUID getUpdatedBy() {
-        return updatedBy;
-    }
-
-    public void setUpdatedBy(UUID updatedBy) {
-        this.updatedBy = updatedBy;
     }
 }
