@@ -11,24 +11,32 @@ public record GeneratePromptResponse(
         UUID templateId,
         UUID templateVersionId,
         UUID aiModelId,
+        UUID generatedPromptId,
         String finalPrompt,
         String systemPrompt,
         boolean usedVariant,
         Map<String, Object> resolvedInputValues,
         String extraInstructions,
-        String title
+        String title,
+        Integer tokensEstimate
 ) {
-    public static GeneratePromptResponse from(RenderResult render, String title) {
+    public static GeneratePromptResponse from(RenderResult render, UUID generatedPromptId, String title) {
+        int totalCharCount = (render.renderedPrompt() != null ? render.renderedPrompt().length() : 0)
+                + (render.systemPrompt() != null ? render.systemPrompt().length() : 0);
+        int tokensEstimate = (int) Math.ceil(totalCharCount / 4.0);
+
         return new GeneratePromptResponse(
                 render.templateId(),
                 render.templateVersionId(),
                 render.aiModelId(),
+                generatedPromptId,
                 render.renderedPrompt(),
                 render.systemPrompt(),
                 render.usedVariant(),
                 render.resolvedInputValues(),
                 render.extraInstructions(),
-                title
+                title,
+                tokensEstimate
         );
     }
 }

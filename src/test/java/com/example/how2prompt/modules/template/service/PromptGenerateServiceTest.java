@@ -7,6 +7,7 @@ import com.example.how2prompt.modules.template.dto.GeneratePromptResponse;
 import com.example.how2prompt.modules.template.dto.RenderResult;
 import com.example.how2prompt.modules.template.entity.Template;
 import com.example.how2prompt.modules.template.repository.TemplateRepository;
+import com.example.how2prompt.modules.prompt.entity.GeneratedPrompt;
 import com.example.how2prompt.modules.prompt.service.GeneratedPromptHistoryService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +21,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
@@ -44,12 +46,13 @@ class PromptGenerateServiceTest {
     private PromptGenerateService promptGenerateService;
 
     @Test
-    void generate_renders_incrementsUsage_andSavesHistoryAsync() {
+    void generate_renders_incrementsUsage_andSavesHistory() {
         UUID templateId = UUID.randomUUID();
         UUID versionId = UUID.randomUUID();
         UUID modelId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID workspaceId = UUID.randomUUID();
+        UUID promptId = UUID.randomUUID();
 
         AuthenticatedUser user = new AuthenticatedUser(userId, "u@example.com", workspaceId, false);
 
@@ -71,9 +74,19 @@ class PromptGenerateServiceTest {
                 "Be concise"
         );
 
+        GeneratedPrompt mockHistory = new GeneratedPrompt();
+        mockHistory.setId(promptId);
+
         when(promptRenderService.render(templateId, modelId, request.getInputValues(), "Be concise"))
                 .thenReturn(render);
         doNothing().when(templateUsageService).incrementUsageCount(templateId);
+        when(generatedPromptHistoryService.save(
+                eq(userId),
+                eq(workspaceId),
+                eq(render),
+                anyMap(),
+                eq("My prompt")
+        )).thenReturn(mockHistory);
 
         GeneratePromptResponse response = promptGenerateService.generate(templateId, request, user);
 
@@ -81,14 +94,16 @@ class PromptGenerateServiceTest {
         assertThat(response.usedVariant()).isTrue();
         assertThat(response.title()).isEqualTo("My prompt");
         assertThat(response.templateVersionId()).isEqualTo(versionId);
+        assertThat(response.generatedPromptId()).isEqualTo(promptId);
+        assertThat(response.tokensEstimate()).isEqualTo(8);
 
         verify(promptRenderService).render(templateId, modelId, request.getInputValues(), "Be concise");
         verify(templateUsageService).incrementUsageCount(templateId);
-        verify(generatedPromptHistoryService).saveAsync(
+        verify(generatedPromptHistoryService).save(
                 eq(userId),
                 eq(workspaceId),
                 eq(render),
-                eq(Map.of("topic", "AI")),
+                anyMap(),
                 eq("My prompt")
         );
     }
@@ -98,6 +113,7 @@ class PromptGenerateServiceTest {
         UUID templateId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID workspaceId = UUID.randomUUID();
+        UUID promptId = UUID.randomUUID();
         AuthenticatedUser user = new AuthenticatedUser(userId, "u@example.com", workspaceId, false);
 
         GeneratePromptRequest request = new GeneratePromptRequest();
@@ -115,19 +131,32 @@ class PromptGenerateServiceTest {
                 null
         );
 
+        GeneratedPrompt mockHistory = new GeneratedPrompt();
+        mockHistory.setId(promptId);
+
         when(promptRenderService.render(eq(templateId), isNull(), eq(request.getInputValues()), isNull()))
                 .thenReturn(render);
         doNothing().when(templateUsageService).incrementUsageCount(templateId);
+        when(generatedPromptHistoryService.save(
+                eq(userId),
+                eq(workspaceId),
+                eq(render),
+                anyMap(),
+                isNull()
+        )).thenReturn(mockHistory);
 
         GeneratePromptResponse response = promptGenerateService.generate(templateId, request, user);
 
         assertThat(response.finalPrompt()).isEqualTo("Hello Ada");
         assertThat(response.usedVariant()).isFalse();
-        verify(generatedPromptHistoryService).saveAsync(
+        assertThat(response.generatedPromptId()).isEqualTo(promptId);
+        assertThat(response.tokensEstimate()).isEqualTo(3);
+
+        verify(generatedPromptHistoryService).save(
                 eq(userId),
                 eq(workspaceId),
                 eq(render),
-                eq(Map.of("name", "Ada")),
+                anyMap(),
                 isNull()
         );
     }
@@ -157,6 +186,8 @@ class PromptGenerateServiceTest {
         GeneratePromptResponse response = promptGenerateService.generate(templateId, request, null);
 
         assertThat(response.finalPrompt()).isEqualTo("Hello Guest");
+        assertThat(response.generatedPromptId()).isNull();
+        assertThat(response.tokensEstimate()).isEqualTo(3);
         verifyNoInteractions(templateUsageService, generatedPromptHistoryService);
     }
 

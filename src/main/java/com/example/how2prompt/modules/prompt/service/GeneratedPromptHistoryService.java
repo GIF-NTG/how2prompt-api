@@ -19,7 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -157,45 +156,34 @@ public class GeneratedPromptHistoryService {
     }
 
     /**
-     * Persist {@code generated_prompts} trên thread pool async.
-     * Lỗi chỉ log — không lan ra request generate.
+     * Lưu lịch sử {@code generated_prompts} đồng bộ (US-3.5).
      */
-    @Async
     @Transactional
-    public void saveAsync(
+    public GeneratedPrompt save(
             UUID userId,
             UUID workspaceId,
             RenderResult render,
             Map<String, Object> rawInputValues,
             String title
     ) {
-        try {
-            GeneratedPrompt row = new GeneratedPrompt();
-            row.setUserId(userId);
-            row.setWorkspaceId(workspaceId);
-            row.setTemplateId(render.templateId());
-            row.setTemplateVersionId(render.templateVersionId());
-            row.setAiModelId(render.aiModelId());
-            row.setTitle(StringUtils.hasText(title) ? title.trim() : null);
-            row.setInputValues(rawInputValues != null ? new HashMap<>(rawInputValues) : new HashMap<>());
-            row.setExtraInstructions(render.extraInstructions());
-            row.setFinalPrompt(render.renderedPrompt());
-            generatedPromptRepository.save(row);
-            log.debug(
-                    "Saved generated_prompt templateId={} userId={} versionId={}",
-                    render.templateId(),
-                    userId,
-                    render.templateVersionId()
-            );
-        } catch (Exception ex) {
-            log.error(
-                    "Failed to save generated_prompt history templateId={} userId={}: {}",
-                    render.templateId(),
-                    userId,
-                    ex.getMessage(),
-                    ex
-            );
-        }
+        GeneratedPrompt row = new GeneratedPrompt();
+        row.setUserId(userId);
+        row.setWorkspaceId(workspaceId);
+        row.setTemplateId(render.templateId());
+        row.setTemplateVersionId(render.templateVersionId());
+        row.setAiModelId(render.aiModelId());
+        row.setTitle(StringUtils.hasText(title) ? title.trim() : null);
+        row.setInputValues(rawInputValues != null ? new HashMap<>(rawInputValues) : new HashMap<>());
+        row.setExtraInstructions(render.extraInstructions());
+        row.setFinalPrompt(render.renderedPrompt());
+        GeneratedPrompt saved = generatedPromptRepository.save(row);
+        log.debug(
+                "Saved generated_prompt templateId={} userId={} versionId={}",
+                render.templateId(),
+                userId,
+                render.templateVersionId()
+        );
+        return saved;
     }
 
     private int resolveLimit(int limit) {
