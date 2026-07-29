@@ -68,6 +68,7 @@ public class PromptGenerateService {
                 request.getExtraInstructions()
         );
 
+        UUID generatedPromptId = null;
         if (authenticated) {
             try {
                 templateUsageService.incrementUsageCount(templateId);
@@ -75,16 +76,19 @@ public class PromptGenerateService {
                 log.warn("Failed to increment usage_count for template {}: {}", templateId, ex.getMessage());
             }
 
-            generatedPromptHistoryService.saveAsync(
+            var savedHistory = generatedPromptHistoryService.save(
                     currentUser.userId(),
                     currentUser.workspaceId(),
                     render,
                     new HashMap<>(inputValues),
                     request.getTitle()
             );
+            if (savedHistory != null) {
+                generatedPromptId = savedHistory.getId();
+            }
         }
 
-        return GeneratePromptResponse.from(render, blankToNull(request.getTitle()));
+        return GeneratePromptResponse.from(render, generatedPromptId, blankToNull(request.getTitle()));
     }
 
     private static void requireUserContext(AuthenticatedUser currentUser) {

@@ -38,7 +38,7 @@ class GeneratedPromptHistoryServiceTest {
             new GeneratedPromptHistoryService(generatedPromptRepository, templateQueryService);
 
     @Test
-    void saveAsyncMapsAuthenticatedGenerateHistory() {
+    void saveMapsAuthenticatedGenerateHistory() {
         UUID userId = UUID.randomUUID();
         UUID workspaceId = UUID.randomUUID();
         UUID templateId = UUID.randomUUID();
@@ -55,13 +55,21 @@ class GeneratedPromptHistoryServiceTest {
                 "Be concise"
         );
 
-        generatedPromptHistoryService.saveAsync(
+        GeneratedPrompt mockSaved = new GeneratedPrompt();
+        UUID promptId = UUID.randomUUID();
+        mockSaved.setId(promptId);
+        when(generatedPromptRepository.save(any(GeneratedPrompt.class))).thenReturn(mockSaved);
+
+        GeneratedPrompt result = generatedPromptHistoryService.save(
                 userId,
                 workspaceId,
                 render,
                 inputValues,
                 "  Saved title  "
         );
+
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo(promptId);
 
         ArgumentCaptor<GeneratedPrompt> captor = ArgumentCaptor.forClass(GeneratedPrompt.class);
         verify(generatedPromptRepository).save(captor.capture());
