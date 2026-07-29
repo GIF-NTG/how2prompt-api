@@ -4,7 +4,7 @@ import com.example.how2prompt.common.response.ApiResponse;
 import com.example.how2prompt.common.security.AuthenticatedUser;
 import com.example.how2prompt.common.security.CurrentUser;
 import com.example.how2prompt.modules.template.dto.request.TemplateSearchCriteria;
-import com.example.how2prompt.modules.template.dto.response.PageResponse;
+import com.example.how2prompt.common.response.PageResponse;
 import com.example.how2prompt.modules.template.dto.response.TemplateDetailResponse;
 import com.example.how2prompt.modules.template.dto.response.TemplateSummaryResponse;
 import com.example.how2prompt.modules.template.service.TemplateQueryService;

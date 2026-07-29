@@ -13,7 +13,7 @@ import com.example.how2prompt.modules.taxonomy.service.TagQueryService;
 import com.example.how2prompt.modules.template.dto.TemplateVariableResponse;
 import com.example.how2prompt.modules.template.dto.TemplateVariantResponse;
 import com.example.how2prompt.modules.template.dto.request.TemplateSearchCriteria;
-import com.example.how2prompt.modules.template.dto.response.PageResponse;
+import com.example.how2prompt.common.response.PageResponse;
 import com.example.how2prompt.modules.template.dto.response.TemplateDetailResponse;
 import com.example.how2prompt.modules.template.dto.response.TemplateSummaryResponse;
 import com.example.how2prompt.modules.template.entity.Template;
