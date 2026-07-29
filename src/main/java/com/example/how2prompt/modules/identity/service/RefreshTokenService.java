@@ -92,6 +92,11 @@ public class RefreshTokenService {
         }
     }
 
+    @Transactional
+    public void revokeAllByUserId(UUID userId) {
+        refreshTokenRepository.revokeAllByUserId(userId, Instant.now());
+    }
+
     private static String generateRawToken() {
         byte[] bytes = new byte[RAW_TOKEN_BYTES];
         SECURE_RANDOM.nextBytes(bytes);

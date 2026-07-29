@@ -13,4 +13,13 @@ public interface EmailService {
      * @param rawToken token verify (gắn vào link FE); lưu hash trong Redis
      */
     void sendEmailVerification(String toEmail, String fullName, String rawToken);
+
+    /**
+     * Gửi email khôi phục mật khẩu. Chạy async.
+     *
+     * @param toEmail  người nhận
+     * @param fullName tên hiển thị
+     * @param rawToken token reset password
+     */
+    void sendPasswordReset(String toEmail, String fullName, String rawToken);
 }

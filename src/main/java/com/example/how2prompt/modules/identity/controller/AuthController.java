@@ -6,11 +6,13 @@ import com.example.how2prompt.common.response.ApiResponse;
 import com.example.how2prompt.config.AuthProperties;
 import com.example.how2prompt.config.JwtProperties;
 import com.example.how2prompt.modules.identity.dto.AuthResponse;
+import com.example.how2prompt.modules.identity.dto.ForgotPasswordRequest;
 import com.example.how2prompt.modules.identity.dto.GoogleOAuthRequest;
 import com.example.how2prompt.modules.identity.dto.LoginRequest;
 import com.example.how2prompt.modules.identity.dto.RegisterRequest;
 import com.example.how2prompt.modules.identity.dto.RegisterResponse;
 import com.example.how2prompt.modules.identity.dto.ResendVerificationRequest;
+import com.example.how2prompt.modules.identity.dto.ResetPasswordRequest;
 import com.example.how2prompt.modules.identity.dto.VerifyEmailRequest;
 import com.example.how2prompt.modules.identity.dto.VerifyEmailResponse;
 import com.example.how2prompt.modules.identity.service.AuthService;
@@ -64,6 +66,18 @@ public class AuthController {
     public ResponseEntity<Void> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
         authService.resendVerification(request.getEmail());
         return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/oauth/google")

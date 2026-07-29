@@ -21,8 +21,7 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
     @Query(value = """
             SELECT t.* FROM templates t
             WHERE t.deleted_at IS NULL
-              AND (:status IS NULL OR t.status = :status)
-              AND (:isPublic IS NULL OR t.is_public = :isPublic)
+              AND (:isAdmin = true OR (t.status = 'published' AND t.is_public = true) OR (CAST(:currentUserId AS uuid) IS NOT NULL AND t.author_id = CAST(:currentUserId AS uuid)))
               AND t.search_vector @@ plainto_tsquery('simple', :search)
               AND (CAST(:categoryId AS uuid) IS NULL OR EXISTS (
                     SELECT 1 FROM template_categories tc
@@ -47,13 +46,13 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
                         AND t.id < CAST(:cursorId AS uuid)
                     )
               )
-            ORDER BY t.created_at DESC, t.id DESC
+            ORDER BY t.is_official DESC, ts_rank(t.search_vector, plainto_tsquery('simple', :search)) DESC, t.created_at DESC, t.id DESC
             LIMIT :limit
             """, nativeQuery = true)
     List<Template> searchNewest(
             @Param("search") String search,
-            @Param("status") String status,
-            @Param("isPublic") Boolean isPublic,
+            @Param("currentUserId") UUID currentUserId,
+            @Param("isAdmin") boolean isAdmin,
             @Param("categoryId") UUID categoryId,
             @Param("hasTags") boolean hasTags,
             @Param("tagIds") List<UUID> tagIds,
@@ -66,8 +65,7 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
     @Query(value = """
             SELECT t.* FROM templates t
             WHERE t.deleted_at IS NULL
-              AND (:status IS NULL OR t.status = :status)
-              AND (:isPublic IS NULL OR t.is_public = :isPublic)
+              AND (:isAdmin = true OR (t.status = 'published' AND t.is_public = true) OR (CAST(:currentUserId AS uuid) IS NOT NULL AND t.author_id = CAST(:currentUserId AS uuid)))
               AND t.featured_at IS NOT NULL
               AND t.search_vector @@ plainto_tsquery('simple', :search)
               AND (CAST(:categoryId AS uuid) IS NULL OR EXISTS (
@@ -93,13 +91,13 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
                         AND t.id < CAST(:cursorId AS uuid)
                     )
               )
-            ORDER BY t.featured_at DESC NULLS LAST, t.id DESC
+            ORDER BY t.is_official DESC, ts_rank(t.search_vector, plainto_tsquery('simple', :search)) DESC, t.featured_at DESC NULLS LAST, t.id DESC
             LIMIT :limit
             """, nativeQuery = true)
     List<Template> searchFeatured(
             @Param("search") String search,
-            @Param("status") String status,
-            @Param("isPublic") Boolean isPublic,
+            @Param("currentUserId") UUID currentUserId,
+            @Param("isAdmin") boolean isAdmin,
             @Param("categoryId") UUID categoryId,
             @Param("hasTags") boolean hasTags,
             @Param("tagIds") List<UUID> tagIds,
@@ -112,8 +110,7 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
     @Query(value = """
             SELECT t.* FROM templates t
             WHERE t.deleted_at IS NULL
-              AND (:status IS NULL OR t.status = :status)
-              AND (:isPublic IS NULL OR t.is_public = :isPublic)
+              AND (:isAdmin = true OR (t.status = 'published' AND t.is_public = true) OR (CAST(:currentUserId AS uuid) IS NOT NULL AND t.author_id = CAST(:currentUserId AS uuid)))
               AND t.search_vector @@ plainto_tsquery('simple', :search)
               AND (CAST(:categoryId AS uuid) IS NULL OR EXISTS (
                     SELECT 1 FROM template_categories tc
@@ -138,13 +135,13 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
                         AND t.id < CAST(:cursorId AS uuid)
                     )
               )
-            ORDER BY t.usage_count DESC, t.id DESC
+            ORDER BY t.is_official DESC, ts_rank(t.search_vector, plainto_tsquery('simple', :search)) DESC, t.usage_count DESC, t.id DESC
             LIMIT :limit
             """, nativeQuery = true)
     List<Template> searchTrending(
             @Param("search") String search,
-            @Param("status") String status,
-            @Param("isPublic") Boolean isPublic,
+            @Param("currentUserId") UUID currentUserId,
+            @Param("isAdmin") boolean isAdmin,
             @Param("categoryId") UUID categoryId,
             @Param("hasTags") boolean hasTags,
             @Param("tagIds") List<UUID> tagIds,
@@ -162,4 +159,173 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Template t SET t.usageCount = t.usageCount + 1 WHERE t.id = :id")
     int incrementUsageCount(@Param("id") UUID id);
+
+    @Query(value = """
+            SELECT t.*, greatest(
+              similarity(coalesce(t.title_i18n->>'en', ''), :search),
+              similarity(coalesce(t.title_i18n->>'vi', ''), :search),
+              similarity(coalesce(t.description_i18n->>'en', ''), :search),
+              similarity(coalesce(t.description_i18n->>'vi', ''), :search)
+            ) AS sim
+            FROM templates t
+            WHERE t.deleted_at IS NULL
+              AND (:isAdmin = true OR (t.status = 'published' AND t.is_public = true) OR (CAST(:currentUserId AS uuid) IS NOT NULL AND t.author_id = CAST(:currentUserId AS uuid)))
+              AND (
+                    coalesce(t.title_i18n->>'en', '') % :search
+                    OR coalesce(t.title_i18n->>'vi', '') % :search
+                    OR coalesce(t.description_i18n->>'en', '') % :search
+                    OR coalesce(t.description_i18n->>'vi', '') % :search
+              )
+              AND (CAST(:categoryId AS uuid) IS NULL OR EXISTS (
+                    SELECT 1 FROM template_categories tc
+                    WHERE tc.template_id = t.id
+                      AND tc.category_id = CAST(:categoryId AS uuid)
+              ))
+              AND (:hasTags = false OR EXISTS (
+                    SELECT 1 FROM template_tags tt
+                    WHERE tt.template_id = t.id
+                      AND tt.tag_id IN (:tagIds)
+              ))
+              AND (CAST(:aiModelId AS uuid) IS NULL OR EXISTS (
+                    SELECT 1 FROM template_models tm
+                    WHERE tm.template_id = t.id
+                      AND tm.ai_model_id = CAST(:aiModelId AS uuid)
+              ))
+              AND (
+                    CAST(:cursorCreatedAt AS timestamp) IS NULL
+                    OR t.created_at < CAST(:cursorCreatedAt AS timestamp)
+                    OR (
+                        t.created_at = CAST(:cursorCreatedAt AS timestamp)
+                        AND t.id < CAST(:cursorId AS uuid)
+                    )
+              )
+            ORDER BY t.is_official DESC, sim DESC, t.created_at DESC, t.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Template> searchNewestTrigram(
+            @Param("search") String search,
+            @Param("currentUserId") UUID currentUserId,
+            @Param("isAdmin") boolean isAdmin,
+            @Param("categoryId") UUID categoryId,
+            @Param("hasTags") boolean hasTags,
+            @Param("tagIds") List<UUID> tagIds,
+            @Param("aiModelId") UUID aiModelId,
+            @Param("cursorCreatedAt") Instant cursorCreatedAt,
+            @Param("cursorId") UUID cursorId,
+            @Param("limit") int limit
+    );
+
+    @Query(value = """
+            SELECT t.*, greatest(
+              similarity(coalesce(t.title_i18n->>'en', ''), :search),
+              similarity(coalesce(t.title_i18n->>'vi', ''), :search),
+              similarity(coalesce(t.description_i18n->>'en', ''), :search),
+              similarity(coalesce(t.description_i18n->>'vi', ''), :search)
+            ) AS sim
+            FROM templates t
+            WHERE t.deleted_at IS NULL
+              AND (:isAdmin = true OR (t.status = 'published' AND t.is_public = true) OR (CAST(:currentUserId AS uuid) IS NOT NULL AND t.author_id = CAST(:currentUserId AS uuid)))
+              AND (
+                    coalesce(t.title_i18n->>'en', '') % :search
+                    OR coalesce(t.title_i18n->>'vi', '') % :search
+                    OR coalesce(t.description_i18n->>'en', '') % :search
+                    OR coalesce(t.description_i18n->>'vi', '') % :search
+              )
+              AND (CAST(:categoryId AS uuid) IS NULL OR EXISTS (
+                    SELECT 1 FROM template_categories tc
+                    WHERE tc.template_id = t.id
+                      AND tc.category_id = CAST(:categoryId AS uuid)
+              ))
+              AND (:hasTags = false OR EXISTS (
+                    SELECT 1 FROM template_tags tt
+                    WHERE tt.template_id = t.id
+                      AND tt.tag_id IN (:tagIds)
+              ))
+              AND (CAST(:aiModelId AS uuid) IS NULL OR EXISTS (
+                    SELECT 1 FROM template_models tm
+                    WHERE tm.template_id = t.id
+                      AND tm.ai_model_id = CAST(:aiModelId AS uuid)
+              ))
+              AND (
+                    CAST(:cursorFeaturedAt AS timestamp) IS NULL
+                    OR t.featured_at < CAST(:cursorFeaturedAt AS timestamp)
+                    OR (
+                        t.featured_at = CAST(:cursorFeaturedAt AS timestamp)
+                        AND t.id < CAST(:cursorId AS uuid)
+                    )
+              )
+            ORDER BY t.is_official DESC, sim DESC, t.featured_at DESC NULLS LAST, t.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Template> searchFeaturedTrigram(
+            @Param("search") String search,
+            @Param("currentUserId") UUID currentUserId,
+            @Param("isAdmin") boolean isAdmin,
+            @Param("categoryId") UUID categoryId,
+            @Param("hasTags") boolean hasTags,
+            @Param("tagIds") List<UUID> tagIds,
+            @Param("aiModelId") UUID aiModelId,
+            @Param("cursorFeaturedAt") Instant cursorFeaturedAt,
+            @Param("cursorId") UUID cursorId,
+            @Param("limit") int limit
+    );
+
+    @Query(value = """
+            SELECT t.*, greatest(
+              similarity(coalesce(t.title_i18n->>'en', ''), :search),
+              similarity(coalesce(t.title_i18n->>'vi', ''), :search),
+              similarity(coalesce(t.description_i18n->>'en', ''), :search),
+              similarity(coalesce(t.description_i18n->>'vi', ''), :search)
+            ) AS sim
+            FROM templates t
+            WHERE t.deleted_at IS NULL
+              AND (:isAdmin = true OR (t.status = 'published' AND t.is_public = true) OR (CAST(:currentUserId AS uuid) IS NOT NULL AND t.author_id = CAST(:currentUserId AS uuid)))
+              AND (
+                    coalesce(t.title_i18n->>'en', '') % :search
+                    OR coalesce(t.title_i18n->>'vi', '') % :search
+                    OR coalesce(t.description_i18n->>'en', '') % :search
+                    OR coalesce(t.description_i18n->>'vi', '') % :search
+              )
+              AND (CAST(:categoryId AS uuid) IS NULL OR EXISTS (
+                    SELECT 1 FROM template_categories tc
+                    WHERE tc.template_id = t.id
+                      AND tc.category_id = CAST(:categoryId AS uuid)
+              ))
+              AND (:hasTags = false OR EXISTS (
+                    SELECT 1 FROM template_tags tt
+                    WHERE tt.template_id = t.id
+                      AND tt.tag_id IN (:tagIds)
+              ))
+              AND (CAST(:aiModelId AS uuid) IS NULL OR EXISTS (
+                    SELECT 1 FROM template_models tm
+                    WHERE tm.template_id = t.id
+                      AND tm.ai_model_id = CAST(:aiModelId AS uuid)
+              ))
+              AND (
+                    CAST(:cursorUsageCount AS bigint) IS NULL
+                    OR t.usage_count < CAST(:cursorUsageCount AS bigint)
+                    OR (
+                        t.usage_count = CAST(:cursorUsageCount AS bigint)
+                        AND t.id < CAST(:cursorId AS uuid)
+                    )
+              )
+            ORDER BY t.is_official DESC, sim DESC, t.usage_count DESC, t.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Template> searchTrendingTrigram(
+            @Param("search") String search,
+            @Param("currentUserId") UUID currentUserId,
+            @Param("isAdmin") boolean isAdmin,
+            @Param("categoryId") UUID categoryId,
+            @Param("hasTags") boolean hasTags,
+            @Param("tagIds") List<UUID> tagIds,
+            @Param("aiModelId") UUID aiModelId,
+            @Param("cursorUsageCount") Long cursorUsageCount,
+            @Param("cursorId") UUID cursorId,
+            @Param("limit") int limit
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Template t SET t.viewCount = t.viewCount + 1 WHERE t.id = :id")
+    int incrementViewCount(@Param("id") UUID id);
 }

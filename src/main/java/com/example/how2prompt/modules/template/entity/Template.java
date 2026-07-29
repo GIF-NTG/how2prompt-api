@@ -79,4 +79,7 @@ public class Template extends SoftDeletableEntity {
 
     @Column(name = "published_at")
     private Instant publishedAt;
+
+    @Column(name = "view_count", nullable = false)
+    private long viewCount = 0L;
 }

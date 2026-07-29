@@ -2,6 +2,7 @@ package com.example.how2prompt.modules.template.service;
 
 import com.example.how2prompt.common.exception.BadRequestException;
 import com.example.how2prompt.common.exception.ResourceNotFoundException;
+import com.example.how2prompt.common.security.AuthenticatedUser;
 import com.example.how2prompt.common.utils.CursorUtil;
 import com.example.how2prompt.common.utils.CursorUtil.DecodedCursor;
 import com.example.how2prompt.modules.catalog.dto.response.AiModelSummaryResponse;
@@ -35,12 +36,18 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+
+import java.time.Duration;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -52,6 +59,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -72,11 +80,28 @@ public class TemplateQueryService {
     private final CategoryQueryService categoryQueryService;
     private final TagQueryService tagQueryService;
     private final AiModelQueryService aiModelQueryService;
+    private final TemplateUsageService templateUsageService;
+    private final StringRedisTemplate redis;
+    private final ObjectMapper objectMapper;
 
     /**
-     * Tìm kiếm và lọc template công khai/admin.
+     * Tìm kiếm và lọc template công khai/admin/cá nhân.
      */
     public PageResponse<TemplateSummaryResponse> search(TemplateSearchCriteria criteria, boolean isAdmin) {
+        return searchInternal(criteria, null, isAdmin);
+    }
+
+    public PageResponse<TemplateSummaryResponse> search(TemplateSearchCriteria criteria, AuthenticatedUser currentUser) {
+        UUID currentUserId = currentUser != null ? currentUser.userId() : null;
+        boolean isAdmin = currentUser != null && currentUser.admin();
+        return searchInternal(criteria, currentUserId, isAdmin);
+    }
+
+    private PageResponse<TemplateSummaryResponse> searchInternal(
+            TemplateSearchCriteria criteria,
+            UUID currentUserId,
+            boolean isAdmin
+    ) {
         int limit = resolveLimit(criteria);
 
         // Resolve criteria slugs
@@ -84,14 +109,11 @@ public class TemplateQueryService {
         List<UUID> tagIds = tagQueryService.resolveIdsBySlugs(criteria.getTags());
         UUID modelId = aiModelQueryService.resolveIdByCode(criteria.getModel());
 
-        String status = isAdmin ? null : STATUS_PUBLISHED;
-        Boolean isPublic = isAdmin ? null : Boolean.TRUE;
-
         List<Template> templates;
         if (StringUtils.hasText(criteria.getSearch())) {
-            templates = searchWithFts(criteria, status, isPublic, categoryId, tagIds, modelId, limit);
+            templates = searchWithFts(criteria, currentUserId, isAdmin, categoryId, tagIds, modelId, limit);
         } else {
-            templates = searchWithSpec(criteria, status, isPublic, categoryId, tagIds, modelId, limit);
+            templates = searchWithSpec(criteria, currentUserId, isAdmin, categoryId, tagIds, modelId, limit);
         }
 
         // Kiểm tra hasMore & Cắt bớt phần tử thừa
@@ -121,6 +143,44 @@ public class TemplateQueryService {
         return new PageResponse<>(dtoList, nextCursor, hasMore);
     }
 
+    public PageResponse<TemplateSummaryResponse> searchCached(TemplateSearchCriteria criteria, AuthenticatedUser currentUser) {
+        // Chỉ cache cho Guest (khi currentUser == null)
+        if (currentUser != null) {
+            return search(criteria, currentUser);
+        }
+
+        String cacheKey = "templates:cache:" + criteria.getSort() + ":" + toCacheKey(criteria);
+        try {
+            String json = redis.opsForValue().get(cacheKey);
+            if (StringUtils.hasText(json)) {
+                return objectMapper.readValue(json, new TypeReference<PageResponse<TemplateSummaryResponse>>() {});
+            }
+        } catch (Exception e) {
+            log.error("Failed to read search cache for key {}: {}", cacheKey, e.getMessage(), e);
+        }
+
+        PageResponse<TemplateSummaryResponse> result = search(criteria, currentUser);
+
+        try {
+            String json = objectMapper.writeValueAsString(result);
+            redis.opsForValue().set(cacheKey, json, Duration.ofMinutes(10));
+        } catch (Exception e) {
+            log.error("Failed to write search cache for key {}: {}", cacheKey, e.getMessage(), e);
+        }
+
+        return result;
+    }
+
+    private String toCacheKey(TemplateSearchCriteria criteria) {
+        return String.format("cat:%s:tags:%s:model:%s:search:%s:cursor:%s:limit:%s",
+                criteria.getCategory() != null ? criteria.getCategory() : "",
+                criteria.getTags() != null ? String.join(",", criteria.getTags()) : "",
+                criteria.getModel() != null ? criteria.getModel() : "",
+                criteria.getSearch() != null ? criteria.getSearch() : "",
+                criteria.getCursor() != null ? criteria.getCursor() : "",
+                criteria.getLimit() != null ? criteria.getLimit() : "");
+    }
+
     /**
      * Chi tiết Template.
      * Kiểm tra quyền truy cập công khai.
@@ -137,6 +197,8 @@ public class TemplateQueryService {
             }
         }
 
+        templateUsageService.incrementViewCountAsync(id);
+
         TemplateDetailResponse response = new TemplateDetailResponse();
         response.setId(template.getId());
         response.setWorkspaceId(template.getWorkspaceId());
@@ -151,6 +213,7 @@ public class TemplateQueryService {
         response.setStatus(template.getStatus());
         response.setUsageCount(template.getUsageCount());
         response.setFavoriteCount(template.getFavoriteCount());
+        response.setViewCount(template.getViewCount());
         response.setFeaturedAt(template.getFeaturedAt());
         response.setPublishedAt(template.getPublishedAt());
         response.setCreatedAt(template.getCreatedAt());
@@ -218,8 +281,8 @@ public class TemplateQueryService {
 
     private List<Template> searchWithFts(
             TemplateSearchCriteria criteria,
-            String status,
-            Boolean isPublic,
+            UUID currentUserId,
+            boolean isAdmin,
             UUID categoryId,
             List<UUID> tagIds,
             UUID modelId,
@@ -230,25 +293,36 @@ public class TemplateQueryService {
         boolean hasTags = tagIds != null && !tagIds.isEmpty();
         List<UUID> queryTagIds = hasTags ? tagIds : List.of(UUID.randomUUID());
 
+        List<Template> results;
         if ("featured".equals(criteria.getSort())) {
             Instant cursorFeaturedAt = decoded != null ? (Instant) decoded.getSortValue() : null;
             UUID cursorId = decoded != null ? decoded.getId() : null;
-            return templateRepository.searchFeatured(searchStr, status, isPublic, categoryId, hasTags, queryTagIds, modelId, cursorFeaturedAt, cursorId, limit + 1);
+            results = templateRepository.searchFeatured(searchStr, currentUserId, isAdmin, categoryId, hasTags, queryTagIds, modelId, cursorFeaturedAt, cursorId, limit + 1);
+            if (results.isEmpty()) {
+                results = templateRepository.searchFeaturedTrigram(searchStr, currentUserId, isAdmin, categoryId, hasTags, queryTagIds, modelId, cursorFeaturedAt, cursorId, limit + 1);
+            }
         } else if ("trending".equals(criteria.getSort())) {
             Long cursorUsageCount = decoded != null ? (Long) decoded.getSortValue() : null;
             UUID cursorId = decoded != null ? decoded.getId() : null;
-            return templateRepository.searchTrending(searchStr, status, isPublic, categoryId, hasTags, queryTagIds, modelId, cursorUsageCount, cursorId, limit + 1);
+            results = templateRepository.searchTrending(searchStr, currentUserId, isAdmin, categoryId, hasTags, queryTagIds, modelId, cursorUsageCount, cursorId, limit + 1);
+            if (results.isEmpty()) {
+                results = templateRepository.searchTrendingTrigram(searchStr, currentUserId, isAdmin, categoryId, hasTags, queryTagIds, modelId, cursorUsageCount, cursorId, limit + 1);
+            }
         } else {
             Instant cursorCreatedAt = decoded != null ? (Instant) decoded.getSortValue() : null;
             UUID cursorId = decoded != null ? decoded.getId() : null;
-            return templateRepository.searchNewest(searchStr, status, isPublic, categoryId, hasTags, queryTagIds, modelId, cursorCreatedAt, cursorId, limit + 1);
+            results = templateRepository.searchNewest(searchStr, currentUserId, isAdmin, categoryId, hasTags, queryTagIds, modelId, cursorCreatedAt, cursorId, limit + 1);
+            if (results.isEmpty()) {
+                results = templateRepository.searchNewestTrigram(searchStr, currentUserId, isAdmin, categoryId, hasTags, queryTagIds, modelId, cursorCreatedAt, cursorId, limit + 1);
+            }
         }
+        return results;
     }
 
     private List<Template> searchWithSpec(
             TemplateSearchCriteria criteria,
-            String status,
-            Boolean isPublic,
+            UUID currentUserId,
+            boolean isAdmin,
             UUID categoryId,
             List<UUID> tagIds,
             UUID modelId,
@@ -260,11 +334,16 @@ public class TemplateQueryService {
             List<Predicate> predicates = new ArrayList<>();
 
             // Quyền truy cập
-            if (status != null) {
-                predicates.add(cb.equal(root.get("status"), status));
-            }
-            if (isPublic != null) {
-                predicates.add(cb.equal(root.get("isPublic"), isPublic));
+            if (!isAdmin) {
+                if (currentUserId != null) {
+                    predicates.add(cb.or(
+                            cb.and(cb.equal(root.get("isPublic"), true), cb.equal(root.get("status"), STATUS_PUBLISHED)),
+                            cb.equal(root.get("authorId"), currentUserId)
+                    ));
+                } else {
+                    predicates.add(cb.equal(root.get("isPublic"), true));
+                    predicates.add(cb.equal(root.get("status"), STATUS_PUBLISHED));
+                }
             }
             if ("featured".equals(criteria.getSort())) {
                 predicates.add(cb.isNotNull(root.get("featuredAt")));
@@ -335,11 +414,11 @@ public class TemplateQueryService {
         // Thiết lập Sort & Pageable
         Sort sort;
         if ("featured".equals(criteria.getSort())) {
-            sort = Sort.by(Sort.Order.desc("featuredAt").nullsLast(), Sort.Order.desc("id"));
+            sort = Sort.by(Sort.Order.desc("official"), Sort.Order.desc("featuredAt").nullsLast(), Sort.Order.desc("id"));
         } else if ("trending".equals(criteria.getSort())) {
-            sort = Sort.by(Sort.Order.desc("usageCount"), Sort.Order.desc("id"));
+            sort = Sort.by(Sort.Order.desc("official"), Sort.Order.desc("usageCount"), Sort.Order.desc("id"));
         } else {
-            sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+            sort = Sort.by(Sort.Order.desc("official"), Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
         }
 
         return templateRepository.findAll(spec, PageRequest.of(0, limit + 1, sort)).getContent();
@@ -484,6 +563,7 @@ public class TemplateQueryService {
         response.setCoverImage(entity.getCoverImage());
         response.setUsageCount(entity.getUsageCount());
         response.setFavoriteCount(entity.getFavoriteCount());
+        response.setViewCount(entity.getViewCount());
         response.setOfficial(entity.isOfficial());
         response.setPublic(entity.isPublic());
         response.setFeaturedAt(entity.getFeaturedAt());
