@@ -1,4 +1,4 @@
-package com.example.how2prompt.modules.template.entity;
+package com.example.how2prompt.modules.prompt.entity;
 
 import com.example.how2prompt.common.entity.SoftDeletableEntity;
 import jakarta.persistence.Column;

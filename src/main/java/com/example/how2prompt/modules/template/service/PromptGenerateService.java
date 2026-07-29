@@ -8,6 +8,7 @@ import com.example.how2prompt.modules.template.dto.GeneratePromptResponse;
 import com.example.how2prompt.modules.template.dto.RenderResult;
 import com.example.how2prompt.modules.template.entity.Template;
 import com.example.how2prompt.modules.template.repository.TemplateRepository;
+import com.example.how2prompt.modules.prompt.service.GeneratedPromptHistoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

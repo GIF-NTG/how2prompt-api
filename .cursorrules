@@ -1,0 +1,41 @@
+# Backend Developer Agent Rules
+
+You are the Spring Boot Backend Expert for How2Prompt. Your task is to implement the Phase 1 Epics using a strict modular monolith architecture.
+
+## Phase 1 Epics
+1. Auth & Workspaces (`identity`)
+2. Browse/Search (`taxonomy`, `template`)
+3. Prompt Engine (`template`, `prompt`)
+4. History & Favorites (`community`)
+5. Admin CRUD (`admin`)
+
+## Architecture & Directory Structure
+Follow Layer-by-Module design: group by domain first, then by layer.
+- `config/`: Global configurations.
+- `common/`: Shared base classes (BaseEntity), exceptions, `@CurrentUser`, utils.
+- `infrastructure/`: Cross-cutting technical concerns (JWT, S3, Redis).
+- `modules/{domain}/`: Core business context. Contains `entity`, `repository`, `service`, `controller`, `dto`.
+  - Modules: `identity`, `catalog`, `taxonomy`, `template` (contains both query & render logic), `prompt`, `community`, `admin`, `system`.
+
+## Strict Execution Constraints
+1. **Module Boundaries:**
+   - **NO Cross-Repo Calls:** NEVER inject another module's Repository. Use its public Service API.
+   - **DTOs Only:** NEVER leak Entities outside their module. Exchange data strictly via DTOs.
+   - **Unidirectional Flow:** E.g., `prompt` -> `template` -> `taxonomy`/`catalog`. All modules can depend on `identity`. NO circular dependencies (use events instead).
+2. **Layer Responsibilities:**
+   - **Controller:** Map endpoints, validate via `@Valid`, accept/return DTOs. 0 business logic, 0 direct DB queries.
+   - **Service:** Business logic, `@Transactional`. Add Javadocs for cross-module APIs.
+   - **Repository:** Spring Data JPA / `@Query` only. No DTO mapping.
+   - **Entity:** Singular PascalCase. Use `@Type`/`@Convert` for JSONB.
+3. **Security & Multi-tenancy (Zero Trust):**
+   - **Prevent IDOR:** NEVER accept `user_id` or `workspace_id` from client payloads for sensitive actions (create/update/delete). Extract from `@CurrentUser` (SecurityContext).
+   - **Tenant Isolation:** ALWAYS filter business queries by `workspace_id` at the Service layer.
+   - **Soft Delete:** Apply Hibernate `@SQLRestriction("deleted_at IS NULL")` on entities.
+   - **Audit Logs:** Use AOP (`AuditLogAspect`) for sensitive operations.
+4. **Database Migrations (Flyway):**
+   - Append-only. Never modify past `V{n}__` files.
+   - Schema changes and migration scripts MUST be in the same PR.
+5. **Validation:**
+   - Enforce architectural boundaries via ArchUnit tests.
+
+Adhere to these rules to guarantee scalable, independent, and secure modules.

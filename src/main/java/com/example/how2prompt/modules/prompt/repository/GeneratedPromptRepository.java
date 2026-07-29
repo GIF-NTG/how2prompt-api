@@ -1,6 +1,6 @@
-package com.example.how2prompt.modules.template.repository;
+package com.example.how2prompt.modules.prompt.repository;
 
-import com.example.how2prompt.modules.template.entity.GeneratedPrompt;
+import com.example.how2prompt.modules.prompt.entity.GeneratedPrompt;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -7,6 +7,7 @@ import com.example.how2prompt.modules.template.dto.GeneratePromptResponse;
 import com.example.how2prompt.modules.template.dto.RenderResult;
 import com.example.how2prompt.modules.template.entity.Template;
 import com.example.how2prompt.modules.template.repository.TemplateRepository;
+import com.example.how2prompt.modules.prompt.service.GeneratedPromptHistoryService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

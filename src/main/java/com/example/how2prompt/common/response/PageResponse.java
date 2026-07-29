@@ -1,4 +1,4 @@
-package com.example.how2prompt.modules.template.dto.response;
+package com.example.how2prompt.common.response;
 
 import lombok.Getter;
 import lombok.Setter;
