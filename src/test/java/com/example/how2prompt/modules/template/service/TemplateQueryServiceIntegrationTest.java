@@ -41,12 +41,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.EnabledIfDockerAvailable;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 import java.util.List;
@@ -64,6 +67,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Import({
         TemplateQueryService.class,
         TemplateAdminService.class,
+        TemplateUsageService.class,
         AiModelQueryService.class,
         AiModelAdminService.class,
         CategoryQueryService.class,
@@ -87,6 +91,12 @@ class TemplateQueryServiceIntegrationTest {
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
     }
+
+    @MockitoBean
+    private StringRedisTemplate redis;
+
+    @MockitoBean
+    private ObjectMapper objectMapper;
 
     @Autowired
     private TemplateQueryService templateQueryService;
