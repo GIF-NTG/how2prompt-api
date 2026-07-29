@@ -10,7 +10,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: how2prompt-api:${IMAGE_TAG:-latest}
+    image: binhturtle/how2prompt-api:${IMAGE_TAG:-latest}
     container_name: how2prompt-api-prod
     restart: unless-stopped
     depends_on:
