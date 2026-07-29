@@ -1,6 +1,5 @@
 name: CI/CD Pipeline cho API
 
-# Pipeline sẽ chạy mỗi khi bạn push code lên nhánh main
 on:
   push:
     branches: [ "main" ]
@@ -13,14 +12,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2. Đăng nhập vào Docker Hub
+      # 2. Setup môi trường Java và chạy Unit/Integration Tests
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+          
+      - name: Run Maven Tests
+        run: ./mvnw clean test
+
+      # 3. Đăng nhập vào Docker Hub (Chỉ chạy khi Test pass)
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 3. Build và Push Image lên Docker Hub
+      # 4. Build và Push Image lên Docker Hub
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
@@ -28,17 +38,17 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/how2prompt-api:latest
 
-      # 4. SSH vào EC2 và ra lệnh Deploy
+      # 5. SSH vào EC2 và ra lệnh Deploy
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          # Đây là các lệnh sẽ chạy ngầm trên EC2 của bạn
+          # Đã bổ sung lệnh docker login vào EC2 để khắc phục lỗi "pull access denied"
           script: |
+            echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
             cd /home/ec2-user/how2prompt-api
             sudo docker compose -f docker-compose.prod.yaml pull api
             sudo docker compose -f docker-compose.prod.yaml up -d api
-            # (Tùy chọn) Xóa các image cũ để giải phóng ổ cứng EC2
             sudo docker image prune -f
