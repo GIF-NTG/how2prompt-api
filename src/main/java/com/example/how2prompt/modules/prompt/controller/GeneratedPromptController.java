@@ -4,6 +4,7 @@ import com.example.how2prompt.common.response.ApiResponse;
 import com.example.how2prompt.common.response.PageResponse;
 import com.example.how2prompt.common.security.AuthenticatedUser;
 import com.example.how2prompt.common.security.CurrentUser;
+import com.example.how2prompt.modules.prompt.dto.response.PromptHistoryDetailResponse;
 import com.example.how2prompt.modules.prompt.dto.response.PromptHistoryResponse;
 import com.example.how2prompt.modules.prompt.service.GeneratedPromptHistoryService;
 import lombok.RequiredArgsConstructor;
@@ -43,8 +44,15 @@ public class GeneratedPromptController {
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") int limit
     ) {
-        // TODO: Implement in Day 3 — delegate to service
-        throw new UnsupportedOperationException("Not implemented yet — Day 3");
+        PageResponse<PromptHistoryResponse> body = generatedPromptHistoryService.getHistory(
+                currentUser.userId(),
+                templateId,
+                aiModelId,
+                search,
+                cursor,
+                limit
+        );
+        return ResponseEntity.ok(ApiResponse.of(body));
     }
 
     /**
@@ -52,12 +60,12 @@ public class GeneratedPromptController {
      * Returns full input_values for re-run form pre-fill.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<PromptHistoryResponse>> getById(
+    public ResponseEntity<ApiResponse<PromptHistoryDetailResponse>> getById(
             @PathVariable UUID id,
             @CurrentUser AuthenticatedUser currentUser
     ) {
-        // TODO: Implement in Day 3 — delegate to service
-        throw new UnsupportedOperationException("Not implemented yet — Day 3");
+        PromptHistoryDetailResponse body = generatedPromptHistoryService.getById(id, currentUser.userId());
+        return ResponseEntity.ok(ApiResponse.of(body));
     }
 
     /**
@@ -68,7 +76,7 @@ public class GeneratedPromptController {
             @PathVariable UUID id,
             @CurrentUser AuthenticatedUser currentUser
     ) {
-        // TODO: Implement in Day 3 — delegate to service
-        throw new UnsupportedOperationException("Not implemented yet — Day 3");
+        generatedPromptHistoryService.delete(id, currentUser.userId());
+        return ResponseEntity.noContent().build();
     }
 }

@@ -60,12 +60,14 @@ class PromptGenerateControllerTest {
                 templateId,
                 UUID.randomUUID(),
                 null,
+                null,
                 "Rendered",
                 null,
                 false,
                 Map.of(),
                 null,
-                null
+                null,
+                2
         );
     }
 }
