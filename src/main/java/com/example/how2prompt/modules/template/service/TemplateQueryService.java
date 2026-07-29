@@ -12,6 +12,7 @@ import com.example.how2prompt.modules.taxonomy.service.CategoryQueryService;
 import com.example.how2prompt.modules.taxonomy.service.TagQueryService;
 import com.example.how2prompt.modules.template.dto.TemplateVariableResponse;
 import com.example.how2prompt.modules.template.dto.TemplateVariantResponse;
+import com.example.how2prompt.modules.template.dto.TemplateVersionStatus;
 import com.example.how2prompt.modules.template.dto.request.TemplateSearchCriteria;
 import com.example.how2prompt.common.response.PageResponse;
 import com.example.how2prompt.modules.template.dto.response.TemplateDetailResponse;
@@ -488,5 +489,44 @@ public class TemplateQueryService {
         response.setFeaturedAt(entity.getFeaturedAt());
         response.setPublishedAt(entity.getPublishedAt());
         return response;
+    }
+
+    /**
+     * Kiểm tra trạng thái của template và so sánh version đang dùng với current version.
+     * Dùng cho Prompt History Detail (US-4.3).
+     */
+    public TemplateVersionStatus checkTemplateVersionStatus(UUID templateId, UUID templateVersionId) {
+        if (templateId == null) {
+            return new TemplateVersionStatus(true, false, null);
+        }
+
+        java.util.Optional<Template> templateOpt = templateRepository.findById(templateId);
+        if (templateOpt.isEmpty()) {
+            return new TemplateVersionStatus(true, false, null);
+        }
+
+        Template template = templateOpt.get();
+        UUID currentVersionId = template.getCurrentVersionId();
+        if (currentVersionId == null) {
+            return new TemplateVersionStatus(false, false, null);
+        }
+
+        if (currentVersionId.equals(templateVersionId)) {
+            return new TemplateVersionStatus(false, false, null);
+        }
+
+        // Fetch version numbers to compare
+        java.util.Optional<TemplateVersion> historyVersionOpt = templateVersionRepository.findById(templateVersionId);
+        java.util.Optional<TemplateVersion> currentVersionOpt = templateVersionRepository.findById(currentVersionId);
+
+        if (historyVersionOpt.isPresent() && currentVersionOpt.isPresent()) {
+            int historyVerNum = historyVersionOpt.get().getVersionNumber();
+            int currentVerNum = currentVersionOpt.get().getVersionNumber();
+            if (currentVerNum > historyVerNum) {
+                return new TemplateVersionStatus(false, true, "v" + currentVerNum);
+            }
+        }
+
+        return new TemplateVersionStatus(false, false, null);
     }
 }
