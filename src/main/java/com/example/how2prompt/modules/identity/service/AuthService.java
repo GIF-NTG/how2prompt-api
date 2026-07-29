@@ -4,10 +4,12 @@ import com.example.how2prompt.common.exception.ConflictException;
 import com.example.how2prompt.common.exception.ErrorCode;
 import com.example.how2prompt.common.exception.UnauthorizedException;
 import com.example.how2prompt.infrastructure.security.JwtTokenProvider;
+import com.example.how2prompt.modules.identity.dto.ForgotPasswordRequest;
 import com.example.how2prompt.modules.identity.dto.GoogleOAuthRequest;
 import com.example.how2prompt.modules.identity.dto.LoginRequest;
 import com.example.how2prompt.modules.identity.dto.RegisterRequest;
 import com.example.how2prompt.modules.identity.dto.RegisterResponse;
+import com.example.how2prompt.modules.identity.dto.ResetPasswordRequest;
 import com.example.how2prompt.modules.identity.dto.VerifyEmailResponse;
 import com.example.how2prompt.modules.identity.entity.RefreshToken;
 import com.example.how2prompt.modules.identity.entity.User;
@@ -50,6 +52,7 @@ public class AuthService {
     private final EmailService emailService;
     private final GoogleIdTokenService googleIdTokenService;
     private final EmailVerificationTokenService emailVerificationTokenService;
+    private final PasswordResetTokenService passwordResetTokenService;
 
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
@@ -315,6 +318,58 @@ public class AuthService {
     private static String stringClaim(GoogleIdToken.Payload payload, String key) {
         Object value = payload.get(key);
         return value == null ? null : value.toString();
+    }
+
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+        String email = normalizeEmail(request.getEmail());
+        if (!StringUtils.hasText(email)) {
+            return;
+        }
+
+        if (passwordResetTokenService.isResendOnCooldown(email)) {
+            log.debug("Forgot password resend cooldown active for {}", email);
+            return;
+        }
+
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            // Thầm lặng bỏ qua để bảo mật tránh khai thác email
+            return;
+        }
+
+        User user = userOpt.get();
+        passwordResetTokenService.markResendCooldown(email);
+
+        UUID userId = user.getId();
+        String userEmail = user.getEmail();
+        String fullName = user.getFullName();
+
+        runAfterCommit(() -> {
+            try {
+                String rawToken = passwordResetTokenService.createToken(userId);
+                emailService.sendPasswordReset(userEmail, fullName, rawToken);
+            } catch (Exception e) {
+                log.error("Failed to issue/send password reset email for user {}: {}", userId, e.getMessage(), e);
+            }
+        });
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        UUID userId = passwordResetTokenService.consumeToken(request.getToken());
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UnauthorizedException(
+                        ErrorCode.TOKEN_INVALID,
+                        "Token khôi phục mật khẩu không hợp lệ."
+                ));
+
+        String passwordHash = passwordEncoder.encode(request.getNewPassword());
+        user.setPasswordHash(passwordHash);
+        userRepository.save(user);
+
+        // Revoke all refresh tokens for this user
+        refreshTokenService.revokeAllByUserId(userId);
     }
 
     public record AuthResult(String accessToken, String refreshToken, UUID userId) {}

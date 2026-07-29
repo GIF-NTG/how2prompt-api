@@ -26,6 +26,7 @@ public class TemplateSummaryResponse {
     private boolean isPublic;
     private Instant featuredAt;
     private Instant publishedAt;
+    private long viewCount;
     private List<CategorySummaryResponse> categories = new ArrayList<>();
     private List<TagResponse> tags = new ArrayList<>();
     private List<AiModelSummaryResponse> models = new ArrayList<>();

@@ -49,4 +49,7 @@ public class User extends SoftDeletableEntity {
 
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
+
+    @Column(name = "username", unique = true, length = 50)
+    private String username;
 }

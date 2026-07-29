@@ -3,6 +3,7 @@ package com.example.how2prompt.modules.template.service;
 import com.example.how2prompt.common.exception.ResourceNotFoundException;
 import com.example.how2prompt.modules.template.repository.TemplateRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,5 +30,11 @@ public class TemplateUsageService {
         if (updated == 0) {
             throw ResourceNotFoundException.of("Template", templateId);
         }
+    }
+
+    @Async("taskExecutor")
+    @Transactional
+    public void incrementViewCountAsync(UUID templateId) {
+        templateRepository.incrementViewCount(templateId);
     }
 }

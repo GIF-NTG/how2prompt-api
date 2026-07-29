@@ -46,9 +46,53 @@ public class TemplateController {
         criteria.setCursor(cursor);
         criteria.setLimit(limit);
 
-        boolean isAdmin = currentUser != null && currentUser.admin();
+        PageResponse<TemplateSummaryResponse> page = templateQueryService.search(criteria, currentUser);
+        return ResponseEntity.ok(ApiResponse.of(page));
+    }
 
-        PageResponse<TemplateSummaryResponse> page = templateQueryService.search(criteria, isAdmin);
+    @GetMapping("/featured")
+    public ResponseEntity<ApiResponse<PageResponse<TemplateSummaryResponse>>> getFeaturedTemplates(
+            @RequestParam(name = "category", required = false) String category,
+            @RequestParam(name = "tag", required = false) List<String> tag,
+            @RequestParam(name = "model", required = false) String model,
+            @RequestParam(name = "search", required = false) String search,
+            @RequestParam(name = "cursor", required = false) String cursor,
+            @RequestParam(name = "limit", required = false, defaultValue = "20") Integer limit,
+            @CurrentUser AuthenticatedUser currentUser
+    ) {
+        TemplateSearchCriteria criteria = new TemplateSearchCriteria();
+        criteria.setCategory(category);
+        criteria.setTags(tag);
+        criteria.setModel(model);
+        criteria.setSearch(search);
+        criteria.setSort("featured");
+        criteria.setCursor(cursor);
+        criteria.setLimit(limit);
+
+        PageResponse<TemplateSummaryResponse> page = templateQueryService.searchCached(criteria, currentUser);
+        return ResponseEntity.ok(ApiResponse.of(page));
+    }
+
+    @GetMapping("/trending")
+    public ResponseEntity<ApiResponse<PageResponse<TemplateSummaryResponse>>> getTrendingTemplates(
+            @RequestParam(name = "category", required = false) String category,
+            @RequestParam(name = "tag", required = false) List<String> tag,
+            @RequestParam(name = "model", required = false) String model,
+            @RequestParam(name = "search", required = false) String search,
+            @RequestParam(name = "cursor", required = false) String cursor,
+            @RequestParam(name = "limit", required = false, defaultValue = "20") Integer limit,
+            @CurrentUser AuthenticatedUser currentUser
+    ) {
+        TemplateSearchCriteria criteria = new TemplateSearchCriteria();
+        criteria.setCategory(category);
+        criteria.setTags(tag);
+        criteria.setModel(model);
+        criteria.setSearch(search);
+        criteria.setSort("trending");
+        criteria.setCursor(cursor);
+        criteria.setLimit(limit);
+
+        PageResponse<TemplateSummaryResponse> page = templateQueryService.searchCached(criteria, currentUser);
         return ResponseEntity.ok(ApiResponse.of(page));
     }
 

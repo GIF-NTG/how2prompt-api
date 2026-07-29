@@ -59,6 +59,90 @@ public class SmtpEmailService implements EmailService {
         }
     }
 
+    @Override
+    @Async
+    public void sendPasswordReset(String toEmail, String fullName, String rawToken) {
+        if (!StringUtils.hasText(toEmail)) {
+            log.warn("Skip password reset email: empty recipient");
+            return;
+        }
+
+        String displayName = StringUtils.hasText(fullName) ? fullName.trim() : toEmail;
+        String resetUrl = buildResetUrl(rawToken);
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(
+                    message,
+                    MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
+                    StandardCharsets.UTF_8.name()
+            );
+
+            helper.setTo(toEmail);
+            helper.setFrom(mailProperties.getFrom(), mailProperties.getFromName());
+            helper.setSubject("Khôi phục mật khẩu — How2Prompt");
+            helper.setText(buildResetPlainText(displayName, resetUrl), buildResetHtml(displayName, resetUrl));
+
+            mailSender.send(message);
+            log.info("Password reset email sent to {}", toEmail);
+        } catch (MessagingException | MailException | UnsupportedEncodingException e) {
+            log.error("Failed to send password reset email to {}: {}", toEmail, e.getMessage(), e);
+        }
+    }
+
+    private String buildResetUrl(String rawToken) {
+        String base = mailProperties.getFrontendBaseUrl();
+        String path = "/reset-password";
+        if (!StringUtils.hasText(base) || !StringUtils.hasText(rawToken)) {
+            return "";
+        }
+        return UriComponentsBuilder
+                .fromUriString(trimTrailingSlash(base))
+                .path(path)
+                .queryParam("token", rawToken)
+                .build()
+                .encode()
+                .toUriString();
+    }
+
+    private static String buildResetPlainText(String fullName, String resetUrl) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Xin chào ").append(fullName).append(",\n\n");
+        sb.append("Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản How2Prompt của bạn.\n");
+        if (StringUtils.hasText(resetUrl)) {
+            sb.append("Vui lòng mở link sau để thực hiện đặt lại mật khẩu mới (hết hạn sau 15 phút):\n");
+            sb.append(resetUrl).append("\n\n");
+        } else {
+            sb.append("Vui lòng đặt lại mật khẩu trong ứng dụng.\n\n");
+        }
+        sb.append("Nếu bạn không yêu cầu khôi phục mật khẩu, hãy bỏ qua email này.\n\n");
+        sb.append("— How2Prompt\n");
+        return sb.toString();
+    }
+
+    private static String buildResetHtml(String fullName, String resetUrl) {
+        String safeName = escapeHtml(fullName);
+        StringBuilder sb = new StringBuilder();
+        sb.append("<!DOCTYPE html><html><body style=\"font-family:sans-serif;line-height:1.5;color:#111\">");
+        sb.append("<p>Xin chào <strong>").append(safeName).append("</strong>,</p>");
+        sb.append("<p>Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản <strong>How2Prompt</strong> của bạn.</p>");
+        if (StringUtils.hasText(resetUrl)) {
+            String safeUrl = escapeHtml(resetUrl);
+            sb.append("<p>Vui lòng bấm nút bên dưới để khôi phục mật khẩu (hết hạn sau 15 phút):</p>");
+            sb.append("<p><a href=\"").append(safeUrl).append("\" ");
+            sb.append("style=\"display:inline-block;padding:10px 18px;background:#2563eb;color:#fff;");
+            sb.append("text-decoration:none;border-radius:6px\">Đặt lại mật khẩu</a></p>");
+            sb.append("<p style=\"font-size:12px;color:#666\">Hoặc mở link: <br/>");
+            sb.append("<a href=\"").append(safeUrl).append("\">").append(safeUrl).append("</a></p>");
+        } else {
+            sb.append("<p>Vui lòng khôi phục mật khẩu trong ứng dụng.</p>");
+        }
+        sb.append("<p style=\"font-size:12px;color:#666\">Nếu bạn không yêu cầu khôi phục mật khẩu, hãy bỏ qua email này.</p>");
+        sb.append("<p>— How2Prompt</p>");
+        sb.append("</body></html>");
+        return sb.toString();
+    }
+
     private String buildVerifyUrl(String rawToken) {
         String base = mailProperties.getFrontendBaseUrl();
         String path = mailProperties.getVerifyEmailPath();

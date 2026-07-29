@@ -141,7 +141,16 @@ public class PromptRenderService {
                 : null;
         String normalizedExtra = StringUtils.hasText(extraInstructions) ? extraInstructions.trim() : null;
         if (normalizedExtra != null) {
-            rendered = rendered + "\n\n" + normalizedExtra;
+            normalizedExtra = sanitizeAndEscape(normalizedExtra);
+            if (rendered.contains("{{__extra__}}")) {
+                rendered = rendered.replace("{{__extra__}}", normalizedExtra);
+            } else {
+                rendered = rendered + "\n\n" + normalizedExtra;
+            }
+        } else {
+            if (rendered.contains("{{__extra__}}")) {
+                rendered = rendered.replace("{{__extra__}}", "");
+            }
         }
 
         return new RenderResult(
@@ -249,6 +258,28 @@ public class PromptRenderService {
         return false;
     }
 
+    private static String sanitizeAndEscape(String input) {
+        if (input == null || input.isEmpty()) {
+            return "";
+        }
+
+        String lowercaseInput = input.toLowerCase();
+        if (lowercaseInput.contains("ignore previous instructions")
+                || lowercaseInput.contains("ignore the instructions")
+                || lowercaseInput.contains("ignore all instructions")
+                || lowercaseInput.contains("override instructions")
+                || lowercaseInput.contains("system prompt")
+                || lowercaseInput.contains("you must instead")
+                || lowercaseInput.contains("ignore the above")) {
+            throw new BadRequestException("Phát hiện nguy cơ Prompt Injection trong dữ liệu đầu vào.");
+        }
+
+        return input
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
+    }
+
     private static String toDisplayString(Object value) {
         if (value == null) {
             return "";
@@ -257,6 +288,7 @@ public class PromptRenderService {
             return collection.stream()
                     .filter(Objects::nonNull)
                     .map(String::valueOf)
+                    .map(PromptRenderService::sanitizeAndEscape)
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("");
         }
@@ -269,10 +301,10 @@ public class PromptRenderService {
                 if (!sb.isEmpty()) {
                     sb.append(", ");
                 }
-                sb.append(array[i]);
+                sb.append(sanitizeAndEscape(String.valueOf(array[i])));
             }
             return sb.toString();
         }
-        return String.valueOf(value);
+        return sanitizeAndEscape(String.valueOf(value));
     }
 }
