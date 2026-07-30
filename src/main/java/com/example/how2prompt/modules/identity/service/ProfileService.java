@@ -72,6 +72,8 @@ public class ProfileService {
                 .bio(user.getBio())
                 .locale(user.getLocale())
                 .timezone(user.getTimezone())
+                .isAdmin(String.valueOf(user.isAdmin()))
+                .isEmailVerified(String.valueOf(user.getEmailVerifiedAt() != null))
                 .build();
     }
 }
