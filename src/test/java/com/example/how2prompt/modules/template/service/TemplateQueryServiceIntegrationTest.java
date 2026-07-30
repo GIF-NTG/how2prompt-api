@@ -140,6 +140,7 @@ class TemplateQueryServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
+
         // 1. Setup User & Workspace
         User user = new User();
         user.setEmail("search-test@example.com");
@@ -188,6 +189,13 @@ class TemplateQueryServiceIntegrationTest {
         t1.setStatus("published");
         t1.setPublic(true);
         templateRepository.save(t1);
+
+        // Ensure different timestamps for robust cursor pagination testing
+        try {
+            Thread.sleep(10);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+        }
 
         CreateTemplateRequest req2 = new CreateTemplateRequest();
         req2.setSlug("python-template");
