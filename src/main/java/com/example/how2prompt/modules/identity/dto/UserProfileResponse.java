@@ -13,6 +13,8 @@ public class UserProfileResponse {
     private String fullName;
     private String avatarUrl;
     private String bio;
+    private String isAdmin;
+    private String isEmailVerified;
     private String locale;
     private String timezone;
 }

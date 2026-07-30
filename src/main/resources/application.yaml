@@ -74,7 +74,7 @@ how2prompt:
     google-client-id: ${GOOGLE_CLIENT_ID:}
     # Cookie refresh_token (httpOnly). Prod HTTPS: AUTH_COOKIE_SECURE=true
     cookie-secure: ${AUTH_COOKIE_SECURE:false}
-    cookie-same-site: Strict
+    cookie-same-site: None
     cookie-path: /api/v1/auth
     cookie-name: refresh_token
     # CORS origins cho SPA (credentials). Ví dụ: http://localhost:5173
