@@ -35,7 +35,7 @@ VALUES
   (
     '11111111-1111-1111-1111-111111111111',
     'admin@how2prompt.com',
-    '$2a$10$wB5E8U21oJb3F8y01.aMzeO9mZ6.y4l.G/t3I5y2oW.g.a7pU8R.q',
+    '$2a$12$XTSt6f/ARjR47z49Q9PKBeQJMG.D4GUr2lo3MixEdq9tHbh2ZNG3S',
     'Admin User',
     'admin',
     true,
@@ -47,7 +47,7 @@ VALUES
   (
     '22222222-2222-2222-2222-222222222222',
     'user@how2prompt.com',
-    '$2a$10$wB5E8U21oJb3F8y01.aMzeO9mZ6.y4l.G/t3I5y2oW.g.a7pU8R.q',
+    '$2a$12$XTSt6f/ARjR47z49Q9PKBeQJMG.D4GUr2lo3MixEdq9tHbh2ZNG3S',
     'Normal User',
     'normaluser',
     false,
