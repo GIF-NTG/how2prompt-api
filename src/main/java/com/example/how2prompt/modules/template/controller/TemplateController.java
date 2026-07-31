@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.annotation.Nullable;
 
 import java.util.List;
 import java.util.UUID;
@@ -35,7 +36,7 @@ public class TemplateController {
             @RequestParam(name = "sort", required = false, defaultValue = "newest") String sort,
             @RequestParam(name = "cursor", required = false) String cursor,
             @RequestParam(name = "limit", required = false, defaultValue = "20") Integer limit,
-            @CurrentUser AuthenticatedUser currentUser
+            @Nullable @CurrentUser AuthenticatedUser currentUser
     ) {
         TemplateSearchCriteria criteria = new TemplateSearchCriteria();
         criteria.setCategory(category);
@@ -58,7 +59,7 @@ public class TemplateController {
             @RequestParam(name = "search", required = false) String search,
             @RequestParam(name = "cursor", required = false) String cursor,
             @RequestParam(name = "limit", required = false, defaultValue = "20") Integer limit,
-            @CurrentUser AuthenticatedUser currentUser
+            @Nullable @CurrentUser AuthenticatedUser currentUser
     ) {
         TemplateSearchCriteria criteria = new TemplateSearchCriteria();
         criteria.setCategory(category);
@@ -81,7 +82,7 @@ public class TemplateController {
             @RequestParam(name = "search", required = false) String search,
             @RequestParam(name = "cursor", required = false) String cursor,
             @RequestParam(name = "limit", required = false, defaultValue = "20") Integer limit,
-            @CurrentUser AuthenticatedUser currentUser
+            @Nullable @CurrentUser AuthenticatedUser currentUser
     ) {
         TemplateSearchCriteria criteria = new TemplateSearchCriteria();
         criteria.setCategory(category);
@@ -99,7 +100,7 @@ public class TemplateController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<TemplateDetailResponse>> getTemplateDetail(
             @PathVariable("id") UUID id,
-            @CurrentUser AuthenticatedUser currentUser
+            @Nullable @CurrentUser AuthenticatedUser currentUser
     ) {
         UUID currentUserId = currentUser != null ? currentUser.userId() : null;
         boolean isAdmin = currentUser != null && currentUser.admin();
