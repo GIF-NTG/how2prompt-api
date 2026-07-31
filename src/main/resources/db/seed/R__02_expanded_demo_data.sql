@@ -101,6 +101,24 @@ INSERT INTO templates (
   '{"en": "Product Release Notes Generator", "vi": "Tạo Ghi chú Phát hành Sản phẩm"}',
   '{"en": "Turn technical changelogs into user-friendly, engaging release notes.", "vi": "Biến các nhật ký thay đổi kỹ thuật thành các ghi chú phát hành thân thiện và hấp dẫn với người dùng."}',
   '11111111-1111-1111-1111-111111111111', 'admin', true, true, 'published', NULL, CURRENT_TIMESTAMP
+),
+-- T11: Universal Prompt Framework
+(
+  'c0000000-0000-0000-0000-000000000012',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  'universal-prompt-framework',
+  '{"en": "Universal Prompt Framework", "vi": "Khung Prompt Phổ quát"}',
+  '{"en": "A highly flexible, standard framework that applies to almost any task.", "vi": "Một khung tiêu chuẩn rất linh hoạt áp dụng cho hầu hết mọi tác vụ."}',
+  '11111111-1111-1111-1111-111111111111', 'admin', true, true, 'published', NULL, CURRENT_TIMESTAMP
+),
+-- T12: Quick Task Delegator
+(
+  'c0000000-0000-0000-0000-000000000013',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  'quick-task-delegator',
+  '{"en": "Quick Task Delegator", "vi": "Giao Việc Nhanh"}',
+  '{"en": "A minimalist template for fast, everyday requests.", "vi": "Một mẫu tối giản cho các yêu cầu nhanh chóng hàng ngày."}',
+  '11111111-1111-1111-1111-111111111111', 'admin', true, true, 'published', NULL, CURRENT_TIMESTAMP
 )
 ON CONFLICT (id) DO NOTHING;
 
@@ -190,6 +208,22 @@ INSERT INTO template_versions (
   E'You translate technical jargon into clear, exciting updates for end users.',
   E'Output will be nicely formatted release notes ready for publishing.',
   '{"en": "Input your changelog to get polished release notes.", "vi": "Nhập nhật ký thay đổi của bạn để có ghi chú phát hành hoàn chỉnh."}', true, '11111111-1111-1111-1111-111111111111', 'Initial release'
+),
+-- T11
+(
+  'd0000000-0000-0000-0000-000000000012', 'c0000000-0000-0000-0000-000000000012', 1,
+  E'**Role:**\n{{role}}\n\n**Context:**\n{{context}}\n\n**Task:**\n{{task}}\n\n**Requirements:**\n{{requirements}}\n\n**Constraints:**\n{{constraints}}\n\n**Example:**\n{{example}}\n\n**Additional Info:**\n{{additional_info}}',
+  E'You are a helpful, versatile AI assistant.',
+  E'Output aligned with the requested task and requirements.',
+  '{"en": "Fill in the framework details.", "vi": "Điền các chi tiết vào khung."}', true, '11111111-1111-1111-1111-111111111111', 'Initial release'
+),
+-- T12
+(
+  'd0000000-0000-0000-0000-000000000013', 'c0000000-0000-0000-0000-000000000013', 1,
+  E'**Context:**\n{{context}}\n\n**Task:**\n{{task}}\n\n**Output Format:**\n{{output_format}}',
+  E'You are a fast and efficient AI assistant.',
+  E'Direct and concise output matching the requested format.',
+  '{"en": "Provide a quick task.", "vi": "Cung cấp một tác vụ nhanh."}', true, '11111111-1111-1111-1111-111111111111', 'Initial release'
 )
 ON CONFLICT (id) DO NOTHING;
 
@@ -242,7 +276,19 @@ INSERT INTO template_variables (
 -- T10 Vars: version_number, new_features, bug_fixes
 ('e0000000-0000-0000-0001-000000000011', 'd0000000-0000-0000-0000-000000000011', 'version_number', '{"en": "Version Number", "vi": "Số Phiên bản"}', '{}', '{"en": "e.g., v2.1.0", "vi": "VD: v2.1.0"}', '{}', 'text', true, NULL, '[]', '{}', 0),
 ('e0000000-0000-0000-0002-000000000011', 'd0000000-0000-0000-0000-000000000011', 'new_features', '{"en": "New Features", "vi": "Tính năng Mới"}', '{}', '{"en": "e.g., Added Dark Mode", "vi": "VD: Thêm Chế độ Tối"}', '{}', 'textarea', true, NULL, '[]', '{}', 1),
-('e0000000-0000-0000-0003-000000000011', 'd0000000-0000-0000-0000-000000000011', 'bug_fixes', '{"en": "Bug Fixes", "vi": "Các Lỗi Đã sửa"}', '{}', '{"en": "e.g., Fixed crash on login", "vi": "VD: Sửa lỗi văng ứng dụng"}', '{}', 'textarea', true, NULL, '[]', '{}', 2)
+('e0000000-0000-0000-0003-000000000011', 'd0000000-0000-0000-0000-000000000011', 'bug_fixes', '{"en": "Bug Fixes", "vi": "Các Lỗi Đã sửa"}', '{}', '{"en": "e.g., Fixed crash on login", "vi": "VD: Sửa lỗi văng ứng dụng"}', '{}', 'textarea', true, NULL, '[]', '{}', 2),
+-- T11 Vars: role, context, task, requirements, constraints, example, additional_info
+('e0000000-0000-0000-0001-000000000012', 'd0000000-0000-0000-0000-000000000012', 'role', '{"en": "Role", "vi": "Vai trò"}', '{}', '{"en": "e.g., Expert Marketer", "vi": "VD: Chuyên gia Tiếp thị"}', '{}', 'text', true, NULL, '[]', '{}', 0),
+('e0000000-0000-0000-0002-000000000012', 'd0000000-0000-0000-0000-000000000012', 'context', '{"en": "Context", "vi": "Bối cảnh"}', '{}', '{"en": "e.g., We are launching a new product", "vi": "VD: Chúng tôi đang ra mắt sản phẩm mới"}', '{}', 'textarea', true, NULL, '[]', '{}', 1),
+('e0000000-0000-0000-0003-000000000012', 'd0000000-0000-0000-0000-000000000012', 'task', '{"en": "Task", "vi": "Nhiệm vụ"}', '{}', '{"en": "e.g., Write an announcement post", "vi": "VD: Viết bài thông báo"}', '{}', 'textarea', true, NULL, '[]', '{}', 2),
+('e0000000-0000-0000-0004-000000000012', 'd0000000-0000-0000-0000-000000000012', 'requirements', '{"en": "Requirements", "vi": "Yêu cầu"}', '{}', '{"en": "e.g., Must be engaging", "vi": "VD: Phải hấp dẫn"}', '{}', 'textarea', true, NULL, '[]', '{}', 3),
+('e0000000-0000-0000-0005-000000000012', 'd0000000-0000-0000-0000-000000000012', 'constraints', '{"en": "Constraints", "vi": "Ràng buộc"}', '{}', '{"en": "e.g., Max 200 words", "vi": "VD: Tối đa 200 từ"}', '{}', 'textarea', true, NULL, '[]', '{}', 4),
+('e0000000-0000-0000-0006-000000000012', 'd0000000-0000-0000-0000-000000000012', 'example', '{"en": "Example", "vi": "Ví dụ"}', '{}', '{"en": "e.g., Previous post", "vi": "VD: Bài đăng trước"}', '{}', 'textarea', false, NULL, '[]', '{}', 5),
+('e0000000-0000-0000-0007-000000000012', 'd0000000-0000-0000-0000-000000000012', 'additional_info', '{"en": "Additional Info", "vi": "Thông tin Bổ sung"}', '{}', '{"en": "Any other context", "vi": "Bất kỳ bối cảnh nào khác"}', '{}', 'textarea', false, NULL, '[]', '{}', 6),
+-- T12 Vars: task, context, output_format
+('e0000000-0000-0000-0001-000000000013', 'd0000000-0000-0000-0000-000000000013', 'task', '{"en": "Task", "vi": "Nhiệm vụ"}', '{}', '{"en": "e.g., Summarize this", "vi": "VD: Tóm tắt cái này"}', '{}', 'textarea', true, NULL, '[]', '{}', 0),
+('e0000000-0000-0000-0002-000000000013', 'd0000000-0000-0000-0000-000000000013', 'context', '{"en": "Context", "vi": "Bối cảnh"}', '{}', '{"en": "e.g., Long email thread", "vi": "VD: Chuỗi email dài"}', '{}', 'textarea', true, NULL, '[]', '{}', 1),
+('e0000000-0000-0000-0003-000000000013', 'd0000000-0000-0000-0000-000000000013', 'output_format', '{"en": "Output Format", "vi": "Định dạng Đầu ra"}', '{}', '{"en": "e.g., Bullet points", "vi": "VD: Các gạch đầu dòng"}', '{}', 'text', true, NULL, '[]', '{}', 2)
 ON CONFLICT (id) DO NOTHING;
 
 -- =============================================================
@@ -258,6 +304,8 @@ UPDATE templates SET current_version_id = 'd0000000-0000-0000-0000-000000000008'
 UPDATE templates SET current_version_id = 'd0000000-0000-0000-0000-000000000009' WHERE id = 'c0000000-0000-0000-0000-000000000009';
 UPDATE templates SET current_version_id = 'd0000000-0000-0000-0000-000000000010' WHERE id = 'c0000000-0000-0000-0000-000000000010';
 UPDATE templates SET current_version_id = 'd0000000-0000-0000-0000-000000000011' WHERE id = 'c0000000-0000-0000-0000-000000000011';
+UPDATE templates SET current_version_id = 'd0000000-0000-0000-0000-000000000012' WHERE id = 'c0000000-0000-0000-0000-000000000012';
+UPDATE templates SET current_version_id = 'd0000000-0000-0000-0000-000000000013' WHERE id = 'c0000000-0000-0000-0000-000000000013';
 
 -- =============================================================
 -- 5. GENERATED PROMPTS (5 Prompts)
