@@ -66,10 +66,12 @@ public class SecurityConfig {
      *  POST /templates/{id}/generate tính quota theo user thay vì theo IP. */
     private static final String[] OPTIONAL_AUTH_GET_PATHS = {
             "/api/v1/templates",
-            "/api/v1/templates/*"
+            "/api/v1/templates/{id}",
+            "/api/v1/templates/featured",
+            "/api/v1/templates/trending"
     };
 
-    private static final String OPTIONAL_AUTH_GENERATE_PATH = "/api/v1/templates/*/generate";
+    private static final String OPTIONAL_AUTH_GENERATE_PATH = "/api/v1/templates/{id}/generate";
 
     private final JwtAuthFilter jwtAuthFilter;
     private final ObjectMapper objectMapper;
