@@ -8,7 +8,10 @@ import com.example.how2prompt.modules.identity.entity.WorkspaceType;
 import com.example.how2prompt.modules.identity.repository.UserRepository;
 import com.example.how2prompt.modules.identity.repository.WorkspaceRepository;
 import com.example.how2prompt.modules.template.dto.CreateTemplateRequest;
+import com.example.how2prompt.modules.template.dto.CreateVariableRequest;
+import com.example.how2prompt.modules.template.dto.UpdateTemplateRequest;
 import com.example.how2prompt.modules.template.dto.TemplateResponse;
+import com.example.how2prompt.common.exception.BadRequestException;
 import com.example.how2prompt.modules.template.entity.Template;
 import com.example.how2prompt.modules.template.entity.TemplateVersion;
 import com.example.how2prompt.modules.template.repository.TemplateRepository;
@@ -131,5 +134,46 @@ class TemplateAdminServiceIntegrationTest {
                 .get()
                 .extracting(TemplateVersion::getId)
                 .isEqualTo(response.currentVersionId());
+    }
+
+    @Test
+    void publishTemplate_throwsBadRequestException_whenPlaceholdersAreUndefined() {
+        CreateTemplateRequest createRequest = new CreateTemplateRequest();
+        createRequest.setSlug("test-validation-publish");
+        createRequest.setTitleI18n(Map.of("en", "Test Validation"));
+        createRequest.setPromptBody("Hello {{user_name}}!");
+
+        TemplateResponse createResponse = templateAdminService.createTemplate(createRequest, currentUser);
+
+        UpdateTemplateRequest updateRequest = new UpdateTemplateRequest();
+        updateRequest.setStatus("published");
+
+        org.junit.jupiter.api.Assertions.assertThrows(BadRequestException.class, () -> {
+            templateAdminService.updateTemplate(createResponse.id(), updateRequest);
+        });
+    }
+
+    @Test
+    void publishTemplate_succeeds_whenAllPlaceholdersAreDefined() {
+        CreateTemplateRequest createRequest = new CreateTemplateRequest();
+        createRequest.setSlug("test-validation-publish-success");
+        createRequest.setTitleI18n(Map.of("en", "Test Validation Success"));
+        createRequest.setPromptBody("Hello {{user_name}}!");
+
+        TemplateResponse createResponse = templateAdminService.createTemplate(createRequest, currentUser);
+
+        CreateVariableRequest varRequest = new CreateVariableRequest();
+        varRequest.setVarKey("user_name");
+        varRequest.setInputType("text");
+        varRequest.setLabelI18n(Map.of("en", "User Name"));
+        varRequest.setRequired(true);
+
+        templateAdminService.addVariable(createResponse.id(), varRequest);
+
+        UpdateTemplateRequest updateRequest = new UpdateTemplateRequest();
+        updateRequest.setStatus("published");
+
+        TemplateResponse publishResponse = templateAdminService.updateTemplate(createResponse.id(), updateRequest);
+        assertThat(publishResponse.status()).isEqualTo("published");
     }
 }
