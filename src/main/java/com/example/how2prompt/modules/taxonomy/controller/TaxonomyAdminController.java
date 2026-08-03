@@ -2,6 +2,7 @@ package com.example.how2prompt.modules.taxonomy.controller;
 
 import com.example.how2prompt.modules.taxonomy.dto.request.CreateCategoryRequest;
 import com.example.how2prompt.modules.taxonomy.dto.request.CreateTagRequest;
+import com.example.how2prompt.modules.taxonomy.dto.request.TagMergeRequest;
 import com.example.how2prompt.modules.taxonomy.dto.request.UpdateCategoryRequest;
 import com.example.how2prompt.modules.taxonomy.dto.response.CategoryTreeResponse;
 import com.example.how2prompt.modules.taxonomy.dto.response.TagResponse;
@@ -67,5 +68,11 @@ public class TaxonomyAdminController {
     public ResponseEntity<Void> deleteTag(@PathVariable UUID id) {
         taxonomyAdminService.deleteTag(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/tags/merge")
+    public ResponseEntity<Void> mergeTags(@Valid @RequestBody TagMergeRequest request) {
+        taxonomyAdminService.mergeTags(request);
+        return ResponseEntity.ok().build();
     }
 }

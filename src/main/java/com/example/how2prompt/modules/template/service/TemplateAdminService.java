@@ -314,10 +314,48 @@ public class TemplateAdminService {
         templateModelRepository.saveAll(models);
     }
 
+    private void validateTemplatePlaceholders(Template template) {
+        TemplateVersion version = getCurrentVersionOrThrow(template);
+        List<TemplateVariable> variables = templateVariableRepository.findByTemplateVersionIdOrderBySortOrderAsc(version.getId());
+        java.util.Set<String> definedKeys = variables.stream()
+                .map(TemplateVariable::getVarKey)
+                .collect(java.util.stream.Collectors.toSet());
+
+        java.util.Set<String> placeholders = new java.util.HashSet<>();
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\{\\{([a-zA-Z0-9_]+)\\}\\}");
+
+        if (version.getPromptBody() != null) {
+            java.util.regex.Matcher matcher = pattern.matcher(version.getPromptBody());
+            while (matcher.find()) {
+                placeholders.add(matcher.group(1));
+            }
+        }
+        if (version.getSystemPrompt() != null) {
+            java.util.regex.Matcher matcher = pattern.matcher(version.getSystemPrompt());
+            while (matcher.find()) {
+                placeholders.add(matcher.group(1));
+            }
+        }
+
+        placeholders.remove("__extra__");
+
+        List<String> missingKeys = placeholders.stream()
+                .filter(key -> !definedKeys.contains(key))
+                .toList();
+
+        if (!missingKeys.isEmpty()) {
+            throw new BadRequestException(
+                    "Không thể xuất bản template do thiếu định nghĩa các biến dynamic form: " + String.join(", ", missingKeys),
+                    Map.of("missingVariables", missingKeys)
+            );
+        }
+    }
+
     private void applyStatus(Template template, String rawStatus) {
         String status = rawStatus.trim().toLowerCase(Locale.ROOT);
         switch (status) {
             case STATUS_PUBLISHED -> {
+                validateTemplatePlaceholders(template);
                 template.setStatus(STATUS_PUBLISHED);
                 if (template.getPublishedAt() == null) {
                     template.setPublishedAt(Instant.now());

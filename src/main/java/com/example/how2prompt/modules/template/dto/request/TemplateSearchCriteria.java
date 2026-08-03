@@ -15,4 +15,5 @@ public class TemplateSearchCriteria {
     private String sort = "newest";
     private String cursor;
     private Integer limit = 20;
+    private Boolean favoritesOnly;
 }
