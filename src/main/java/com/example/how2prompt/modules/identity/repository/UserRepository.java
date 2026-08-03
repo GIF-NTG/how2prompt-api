@@ -17,4 +17,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByUsername(String username);
 
     boolean existsByUsernameAndIdNot(String username, UUID id);
+
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(u) FROM User u WHERE u.lastLoginAt >= :threshold")
+    long countActiveUsersSince(@org.springframework.data.repository.query.Param("threshold") java.time.Instant threshold);
+
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(u) FROM User u WHERE u.emailVerifiedAt IS NOT NULL")
+    long countVerifiedUsers();
 }

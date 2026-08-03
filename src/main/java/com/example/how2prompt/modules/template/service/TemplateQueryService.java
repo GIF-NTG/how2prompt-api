@@ -18,6 +18,7 @@ import com.example.how2prompt.modules.template.dto.request.TemplateSearchCriteri
 import com.example.how2prompt.common.response.PageResponse;
 import com.example.how2prompt.modules.template.dto.response.TemplateDetailResponse;
 import com.example.how2prompt.modules.template.dto.response.TemplateSummaryResponse;
+import com.example.how2prompt.modules.template.entity.Favorite;
 import com.example.how2prompt.modules.template.entity.Template;
 import com.example.how2prompt.modules.template.entity.TemplateCategory;
 import com.example.how2prompt.modules.template.entity.TemplateModel;
@@ -26,6 +27,7 @@ import com.example.how2prompt.modules.template.entity.TemplateVariable;
 import com.example.how2prompt.modules.template.entity.TemplateVariant;
 import com.example.how2prompt.modules.template.entity.TemplateVersion;
 import com.example.how2prompt.modules.template.repository.TemplateCategoryRepository;
+import com.example.how2prompt.modules.template.repository.FavoriteRepository;
 import com.example.how2prompt.modules.template.repository.TemplateModelRepository;
 import com.example.how2prompt.modules.template.repository.TemplateRepository;
 import com.example.how2prompt.modules.template.repository.TemplateTagRepository;
@@ -76,6 +78,7 @@ public class TemplateQueryService {
     private final TemplateVersionRepository templateVersionRepository;
     private final TemplateVariableRepository templateVariableRepository;
     private final TemplateVariantRepository templateVariantRepository;
+    private final FavoriteRepository favoriteRepository;
 
     private final CategoryQueryService categoryQueryService;
     private final TagQueryService tagQueryService;
@@ -138,7 +141,7 @@ public class TemplateQueryService {
                 .map(this::mapToSummaryResponse)
                 .collect(Collectors.toList());
 
-        enrichTemplateSummaries(dtoList);
+        enrichTemplateSummaries(dtoList, currentUserId);
 
         return new PageResponse<>(dtoList, nextCursor, hasMore);
     }
@@ -218,6 +221,7 @@ public class TemplateQueryService {
         response.setPublishedAt(template.getPublishedAt());
         response.setCreatedAt(template.getCreatedAt());
         response.setUpdatedAt(template.getUpdatedAt());
+        response.setFavorited(currentUserId != null && favoriteRepository.existsByIdUserIdAndIdTemplateId(currentUserId, id));
 
         // Lấy version hiện tại
         if (template.getCurrentVersionId() != null) {
@@ -292,28 +296,29 @@ public class TemplateQueryService {
         DecodedCursor decoded = CursorUtil.decode(criteria.getCursor(), criteria.getSort());
         boolean hasTags = tagIds != null && !tagIds.isEmpty();
         List<UUID> queryTagIds = hasTags ? tagIds : List.of(UUID.randomUUID());
+        boolean favsOnly = criteria.getFavoritesOnly() != null && criteria.getFavoritesOnly();
 
         List<Template> results;
         if ("featured".equals(criteria.getSort())) {
             Instant cursorFeaturedAt = decoded != null ? (Instant) decoded.getSortValue() : null;
             UUID cursorId = decoded != null ? decoded.getId() : null;
-            results = templateRepository.searchFeatured(searchStr, currentUserId, isAdmin, categoryId, hasTags, queryTagIds, modelId, cursorFeaturedAt, cursorId, limit + 1);
+            results = templateRepository.searchFeatured(searchStr, currentUserId, isAdmin, favsOnly, categoryId, hasTags, queryTagIds, modelId, cursorFeaturedAt, cursorId, limit + 1);
             if (results.isEmpty()) {
-                results = templateRepository.searchFeaturedTrigram(searchStr, currentUserId, isAdmin, categoryId, hasTags, queryTagIds, modelId, cursorFeaturedAt, cursorId, limit + 1);
+                results = templateRepository.searchFeaturedTrigram(searchStr, currentUserId, isAdmin, favsOnly, categoryId, hasTags, queryTagIds, modelId, cursorFeaturedAt, cursorId, limit + 1);
             }
         } else if ("trending".equals(criteria.getSort())) {
             Long cursorUsageCount = decoded != null ? (Long) decoded.getSortValue() : null;
             UUID cursorId = decoded != null ? decoded.getId() : null;
-            results = templateRepository.searchTrending(searchStr, currentUserId, isAdmin, categoryId, hasTags, queryTagIds, modelId, cursorUsageCount, cursorId, limit + 1);
+            results = templateRepository.searchTrending(searchStr, currentUserId, isAdmin, favsOnly, categoryId, hasTags, queryTagIds, modelId, cursorUsageCount, cursorId, limit + 1);
             if (results.isEmpty()) {
-                results = templateRepository.searchTrendingTrigram(searchStr, currentUserId, isAdmin, categoryId, hasTags, queryTagIds, modelId, cursorUsageCount, cursorId, limit + 1);
+                results = templateRepository.searchTrendingTrigram(searchStr, currentUserId, isAdmin, favsOnly, categoryId, hasTags, queryTagIds, modelId, cursorUsageCount, cursorId, limit + 1);
             }
         } else {
             Instant cursorCreatedAt = decoded != null ? (Instant) decoded.getSortValue() : null;
             UUID cursorId = decoded != null ? decoded.getId() : null;
-            results = templateRepository.searchNewest(searchStr, currentUserId, isAdmin, categoryId, hasTags, queryTagIds, modelId, cursorCreatedAt, cursorId, limit + 1);
+            results = templateRepository.searchNewest(searchStr, currentUserId, isAdmin, favsOnly, categoryId, hasTags, queryTagIds, modelId, cursorCreatedAt, cursorId, limit + 1);
             if (results.isEmpty()) {
-                results = templateRepository.searchNewestTrigram(searchStr, currentUserId, isAdmin, categoryId, hasTags, queryTagIds, modelId, cursorCreatedAt, cursorId, limit + 1);
+                results = templateRepository.searchNewestTrigram(searchStr, currentUserId, isAdmin, favsOnly, categoryId, hasTags, queryTagIds, modelId, cursorCreatedAt, cursorId, limit + 1);
             }
         }
         return results;
@@ -373,6 +378,15 @@ public class TemplateQueryService {
                 Root<TemplateModel> subRoot = subquery.from(TemplateModel.class);
                 subquery.select(subRoot.get("id").get("templateId"));
                 subquery.where(cb.equal(subRoot.get("id").get("aiModelId"), modelId));
+                predicates.add(cb.in(root.get("id")).value(subquery));
+            }
+
+            // Bộ lọc favoritesOnly
+            if (criteria.getFavoritesOnly() != null && criteria.getFavoritesOnly() && currentUserId != null) {
+                Subquery<UUID> subquery = query.subquery(UUID.class);
+                Root<Favorite> subRoot = subquery.from(Favorite.class);
+                subquery.select(subRoot.get("id").get("templateId"));
+                subquery.where(cb.equal(subRoot.get("id").get("userId"), currentUserId));
                 predicates.add(cb.in(root.get("id")).value(subquery));
             }
 
@@ -442,7 +456,7 @@ public class TemplateQueryService {
     /**
      * Batch enrich metadata cho danh sách summary (tránh N+1).
      */
-    private void enrichTemplateSummaries(List<TemplateSummaryResponse> summaries) {
+    private void enrichTemplateSummaries(List<TemplateSummaryResponse> summaries, UUID currentUserId) {
         if (summaries.isEmpty()) return;
 
         List<UUID> templateIds = summaries.stream().map(TemplateSummaryResponse::getId).toList();
@@ -451,6 +465,12 @@ public class TemplateQueryService {
         List<TemplateCategory> tcList = templateCategoryRepository.findByIdTemplateIdIn(templateIds);
         List<TemplateTag> ttList = templateTagRepository.findByIdTemplateIdIn(templateIds);
         List<TemplateModel> tmList = templateModelRepository.findByIdTemplateIdIn(templateIds);
+
+        Set<UUID> favoritedTemplateIds = currentUserId != null
+                ? favoriteRepository.findByIdUserId(currentUserId).stream()
+                        .map(fav -> fav.getId().getTemplateId())
+                        .collect(Collectors.toSet())
+                : Collections.emptySet();
 
         // Collect unique entity ids
         Set<UUID> categoryIds = tcList.stream().map(tc -> tc.getId().getCategoryId()).collect(Collectors.toSet());
@@ -496,6 +516,7 @@ public class TemplateQueryService {
             summary.setCategories(tcGroup.getOrDefault(summary.getId(), Collections.emptyList()));
             summary.setTags(ttGroup.getOrDefault(summary.getId(), Collections.emptyList()));
             summary.setModels(tmGroup.getOrDefault(summary.getId(), Collections.emptyList()));
+            summary.setFavorited(favoritedTemplateIds.contains(summary.getId()));
         }
     }
 

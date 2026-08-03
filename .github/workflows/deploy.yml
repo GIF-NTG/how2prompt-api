@@ -11,6 +11,8 @@ jobs:
       # 1. Tải source code về máy ảo của GitHub
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       # 2. Setup môi trường Java và chạy Unit/Integration Tests
       - name: Set up JDK 21
@@ -20,6 +22,11 @@ jobs:
           distribution: 'temurin'
           cache: maven
           
+      - name: Check Flyway Immutability
+        run: |
+          chmod +x .github/scripts/check_flyway_immutability.sh
+          ./.github/scripts/check_flyway_immutability.sh
+
       - name: Run Maven Tests
         run: ./mvnw clean test
 

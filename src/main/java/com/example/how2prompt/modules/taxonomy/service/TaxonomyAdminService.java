@@ -1,5 +1,9 @@
 package com.example.how2prompt.modules.taxonomy.service;
 
+import com.example.how2prompt.modules.taxonomy.dto.request.TagMergeRequest;
+import com.example.how2prompt.modules.template.entity.TemplateTag;
+import com.example.how2prompt.modules.template.entity.TemplateTagId;
+import com.example.how2prompt.modules.template.repository.TemplateTagRepository;
 import com.example.how2prompt.common.exception.BadRequestException;
 import com.example.how2prompt.common.exception.ConflictException;
 import com.example.how2prompt.common.exception.ResourceNotFoundException;
@@ -17,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -29,6 +34,7 @@ public class TaxonomyAdminService {
     private final TagRepository tagRepository;
     private final CategoryQueryService categoryQueryService;
     private final TagQueryService tagQueryService;
+    private final TemplateTagRepository templateTagRepository;
 
     /**
      * Tạo Category mới.
@@ -191,5 +197,53 @@ public class TaxonomyAdminService {
                     .orElseThrow(() -> new ResourceNotFoundException("Category", currentParentId));
             nextParentId = parent.getParent() != null ? parent.getParent().getId() : null;
         }
+    }
+
+    /**
+     * Trộn 2 tag trùng lặp (US-5.2).
+     * Chuyển tất cả template từ source tag sang target tag, cộng dồn usage_count và xóa source tag.
+     */
+    public void mergeTags(TagMergeRequest request) {
+        UUID sourceId = request.getSourceTagId();
+        UUID targetId = request.getTargetTagId();
+
+        if (sourceId.equals(targetId)) {
+            throw new BadRequestException("Tag nguồn và tag đích không được trùng nhau.");
+        }
+
+        Tag sourceTag = tagRepository.findById(sourceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tag", sourceId));
+        Tag targetTag = tagRepository.findById(targetId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tag", targetId));
+
+        // 1. Lấy tất cả template liên kết với source tag
+        List<TemplateTag> sourceRelations = templateTagRepository.findByIdTagId(sourceId);
+
+        // 2. Cập nhật các liên kết template
+        for (TemplateTag relation : sourceRelations) {
+            UUID templateId = relation.getId().getTemplateId();
+
+            // Nếu template đã có liên kết với target tag rồi -> xóa liên kết với source tag
+            if (templateTagRepository.existsByIdTemplateIdAndIdTagId(templateId, targetId)) {
+                templateTagRepository.delete(relation);
+            } else {
+                // Nếu chưa có -> cập nhật khóa chính sang target tag
+                templateTagRepository.delete(relation);
+                templateTagRepository.flush();
+
+                TemplateTag newRelation = new TemplateTag();
+                newRelation.setId(new TemplateTagId(templateId, targetId));
+                newRelation.setTemplate(relation.getTemplate());
+                templateTagRepository.save(newRelation);
+            }
+        }
+        templateTagRepository.flush();
+
+        // 3. Cộng dồn usage count
+        targetTag.setUsageCount(targetTag.getUsageCount() + sourceTag.getUsageCount());
+        tagRepository.save(targetTag);
+
+        // 4. Xóa tag nguồn
+        tagRepository.delete(sourceTag);
     }
 }
