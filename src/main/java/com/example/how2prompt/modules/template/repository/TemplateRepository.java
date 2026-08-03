@@ -22,6 +22,11 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
             SELECT t.* FROM templates t
             WHERE t.deleted_at IS NULL
               AND (:isAdmin = true OR (t.status = 'published' AND t.is_public = true) OR (CAST(:currentUserId AS uuid) IS NOT NULL AND t.author_id = CAST(:currentUserId AS uuid)))
+              AND (:favoritesOnly = false OR EXISTS (
+                    SELECT 1 FROM favorites f
+                    WHERE f.template_id = t.id
+                      AND f.user_id = CAST(:currentUserId AS uuid)
+              ))
               AND t.search_vector @@ plainto_tsquery('simple', :search)
               AND (CAST(:categoryId AS uuid) IS NULL OR EXISTS (
                     SELECT 1 FROM template_categories tc
@@ -53,6 +58,7 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
             @Param("search") String search,
             @Param("currentUserId") UUID currentUserId,
             @Param("isAdmin") boolean isAdmin,
+            @Param("favoritesOnly") boolean favoritesOnly,
             @Param("categoryId") UUID categoryId,
             @Param("hasTags") boolean hasTags,
             @Param("tagIds") List<UUID> tagIds,
@@ -66,6 +72,11 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
             SELECT t.* FROM templates t
             WHERE t.deleted_at IS NULL
               AND (:isAdmin = true OR (t.status = 'published' AND t.is_public = true) OR (CAST(:currentUserId AS uuid) IS NOT NULL AND t.author_id = CAST(:currentUserId AS uuid)))
+              AND (:favoritesOnly = false OR EXISTS (
+                    SELECT 1 FROM favorites f
+                    WHERE f.template_id = t.id
+                      AND f.user_id = CAST(:currentUserId AS uuid)
+              ))
               AND t.featured_at IS NOT NULL
               AND t.search_vector @@ plainto_tsquery('simple', :search)
               AND (CAST(:categoryId AS uuid) IS NULL OR EXISTS (
@@ -98,6 +109,7 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
             @Param("search") String search,
             @Param("currentUserId") UUID currentUserId,
             @Param("isAdmin") boolean isAdmin,
+            @Param("favoritesOnly") boolean favoritesOnly,
             @Param("categoryId") UUID categoryId,
             @Param("hasTags") boolean hasTags,
             @Param("tagIds") List<UUID> tagIds,
@@ -111,6 +123,11 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
             SELECT t.* FROM templates t
             WHERE t.deleted_at IS NULL
               AND (:isAdmin = true OR (t.status = 'published' AND t.is_public = true) OR (CAST(:currentUserId AS uuid) IS NOT NULL AND t.author_id = CAST(:currentUserId AS uuid)))
+              AND (:favoritesOnly = false OR EXISTS (
+                    SELECT 1 FROM favorites f
+                    WHERE f.template_id = t.id
+                      AND f.user_id = CAST(:currentUserId AS uuid)
+              ))
               AND t.search_vector @@ plainto_tsquery('simple', :search)
               AND (CAST(:categoryId AS uuid) IS NULL OR EXISTS (
                     SELECT 1 FROM template_categories tc
@@ -142,6 +159,7 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
             @Param("search") String search,
             @Param("currentUserId") UUID currentUserId,
             @Param("isAdmin") boolean isAdmin,
+            @Param("favoritesOnly") boolean favoritesOnly,
             @Param("categoryId") UUID categoryId,
             @Param("hasTags") boolean hasTags,
             @Param("tagIds") List<UUID> tagIds,
@@ -170,6 +188,11 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
             FROM templates t
             WHERE t.deleted_at IS NULL
               AND (:isAdmin = true OR (t.status = 'published' AND t.is_public = true) OR (CAST(:currentUserId AS uuid) IS NOT NULL AND t.author_id = CAST(:currentUserId AS uuid)))
+              AND (:favoritesOnly = false OR EXISTS (
+                    SELECT 1 FROM favorites f
+                    WHERE f.template_id = t.id
+                      AND f.user_id = CAST(:currentUserId AS uuid)
+              ))
               AND (
                     coalesce(t.title_i18n->>'en', '') % :search
                     OR coalesce(t.title_i18n->>'vi', '') % :search
@@ -206,6 +229,7 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
             @Param("search") String search,
             @Param("currentUserId") UUID currentUserId,
             @Param("isAdmin") boolean isAdmin,
+            @Param("favoritesOnly") boolean favoritesOnly,
             @Param("categoryId") UUID categoryId,
             @Param("hasTags") boolean hasTags,
             @Param("tagIds") List<UUID> tagIds,
@@ -225,6 +249,11 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
             FROM templates t
             WHERE t.deleted_at IS NULL
               AND (:isAdmin = true OR (t.status = 'published' AND t.is_public = true) OR (CAST(:currentUserId AS uuid) IS NOT NULL AND t.author_id = CAST(:currentUserId AS uuid)))
+              AND (:favoritesOnly = false OR EXISTS (
+                    SELECT 1 FROM favorites f
+                    WHERE f.template_id = t.id
+                      AND f.user_id = CAST(:currentUserId AS uuid)
+              ))
               AND (
                     coalesce(t.title_i18n->>'en', '') % :search
                     OR coalesce(t.title_i18n->>'vi', '') % :search
@@ -261,6 +290,7 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
             @Param("search") String search,
             @Param("currentUserId") UUID currentUserId,
             @Param("isAdmin") boolean isAdmin,
+            @Param("favoritesOnly") boolean favoritesOnly,
             @Param("categoryId") UUID categoryId,
             @Param("hasTags") boolean hasTags,
             @Param("tagIds") List<UUID> tagIds,
@@ -280,6 +310,11 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
             FROM templates t
             WHERE t.deleted_at IS NULL
               AND (:isAdmin = true OR (t.status = 'published' AND t.is_public = true) OR (CAST(:currentUserId AS uuid) IS NOT NULL AND t.author_id = CAST(:currentUserId AS uuid)))
+              AND (:favoritesOnly = false OR EXISTS (
+                    SELECT 1 FROM favorites f
+                    WHERE f.template_id = t.id
+                      AND f.user_id = CAST(:currentUserId AS uuid)
+              ))
               AND (
                     coalesce(t.title_i18n->>'en', '') % :search
                     OR coalesce(t.title_i18n->>'vi', '') % :search
@@ -316,6 +351,7 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
             @Param("search") String search,
             @Param("currentUserId") UUID currentUserId,
             @Param("isAdmin") boolean isAdmin,
+            @Param("favoritesOnly") boolean favoritesOnly,
             @Param("categoryId") UUID categoryId,
             @Param("hasTags") boolean hasTags,
             @Param("tagIds") List<UUID> tagIds,
@@ -328,4 +364,12 @@ public interface TemplateRepository extends JpaRepository<Template, UUID>, JpaSp
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Template t SET t.viewCount = t.viewCount + 1 WHERE t.id = :id")
     int incrementViewCount(@Param("id") UUID id);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Template t SET t.favoriteCount = t.favoriteCount + 1 WHERE t.id = :id")
+    int incrementFavoriteCount(@Param("id") UUID id);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Template t SET t.favoriteCount = greatest(0, t.favoriteCount - 1) WHERE t.id = :id")
+    int decrementFavoriteCount(@Param("id") UUID id);
 }

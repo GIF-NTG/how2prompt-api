@@ -35,6 +35,7 @@ public class TemplateDetailResponse {
     private Instant createdAt;
     private Instant updatedAt;
     private long viewCount;
+    private boolean isFavorited;
 
     private TemplateVersionItem currentVersion;
 
