@@ -1,6 +1,8 @@
 package com.example.how2prompt.modules.prompt.service;
 
+import com.example.how2prompt.common.exception.BadRequestException;
 import com.example.how2prompt.common.exception.ForbiddenException;
+import com.example.how2prompt.common.exception.BadRequestException;
 import com.example.how2prompt.common.response.PageResponse;
 import com.example.how2prompt.modules.prompt.dto.response.PromptHistoryDetailResponse;
 import com.example.how2prompt.modules.prompt.dto.response.PromptHistoryResponse;
@@ -221,5 +223,88 @@ class GeneratedPromptHistoryServiceTest {
         // Act & Assert
         assertThatThrownBy(() -> generatedPromptHistoryService.delete(promptId, accessorId))
                 .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void getHistory_userIdNull_throwsBadRequest() {
+        assertThatThrownBy(() -> generatedPromptHistoryService.getHistory(null, null, null, null, null, 10))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void getById_idOrUserIdNull_throwsBadRequest() {
+        assertThatThrownBy(() -> generatedPromptHistoryService.getById(null, UUID.randomUUID()))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> generatedPromptHistoryService.getById(UUID.randomUUID(), null))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void delete_idOrUserIdNull_throwsBadRequest() {
+        assertThatThrownBy(() -> generatedPromptHistoryService.delete(null, UUID.randomUUID()))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> generatedPromptHistoryService.delete(UUID.randomUUID(), null))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void getHistory_invalidLimit_resolvesToDefaultLimit() {
+        UUID userId = UUID.randomUUID();
+        Page<GeneratedPrompt> page = new PageImpl<>(List.of());
+        when(generatedPromptRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(page);
+
+        // limit < 1
+        generatedPromptHistoryService.getHistory(userId, null, null, null, null, 0);
+        // limit > 100
+        generatedPromptHistoryService.getHistory(userId, null, null, null, null, 150);
+
+        // It should request size DEFAULT_LIMIT + 1 = 21
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(generatedPromptRepository, times(2)).findAll(any(Specification.class), captor.capture());
+        assertThat(captor.getAllValues().get(0).getPageSize()).isEqualTo(21);
+        assertThat(captor.getAllValues().get(1).getPageSize()).isEqualTo(21);
+    }
+
+    @Test
+    void getHistory_hasMore_generatesNextCursor() {
+        UUID userId = UUID.randomUUID();
+        
+        GeneratedPrompt p1 = new GeneratedPrompt();
+        p1.setId(UUID.randomUUID());
+        p1.setCreatedAt(Instant.parse("2024-01-02T10:00:00Z"));
+        
+        GeneratedPrompt p2 = new GeneratedPrompt();
+        p2.setId(UUID.randomUUID());
+        p2.setCreatedAt(Instant.parse("2024-01-01T10:00:00Z"));
+        
+        // request limit = 1, repo returns 2 (hasMore = true)
+        Page<GeneratedPrompt> page = new PageImpl<>(List.of(p1, p2));
+        when(generatedPromptRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(page);
+
+        PageResponse<PromptHistoryResponse> response = generatedPromptHistoryService.getHistory(
+                userId, null, null, null, null, 1
+        );
+
+        assertThat(response.isHasMore()).isTrue();
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getNextCursor()).isNotNull();
+    }
+
+    @Test
+    void save_nullTitleAndInputs_savedGracefully() {
+        RenderResult render = new RenderResult(
+                UUID.randomUUID(), UUID.randomUUID(), null, "text", null, false, Map.of(), null
+        );
+
+        when(generatedPromptRepository.save(any(GeneratedPrompt.class))).thenAnswer(i -> i.getArgument(0));
+
+        GeneratedPrompt result = generatedPromptHistoryService.save(
+                UUID.randomUUID(), UUID.randomUUID(), render, null, "   "
+        );
+
+        assertThat(result.getTitle()).isNull();
+        assertThat(result.getInputValues()).isEmpty();
     }
 }
