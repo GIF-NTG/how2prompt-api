@@ -278,6 +278,94 @@ class PromptRenderServiceTest {
                 .hasMessageContaining("Phát hiện nguy cơ Prompt Injection");
     }
 
+    @Test
+    void render_withObjectArrayAndCollectionInputs_resolvesCorrectly() {
+        stubTemplateAndVersion("Array: {{arr}}, Coll: {{coll}}");
+
+        TemplateVariable arrVar = variable("arr", "multiselect", false, null);
+        TemplateVariable collVar = variable("coll", "multiselect", false, null);
+        
+        when(templateVariableRepository.findByTemplateVersionIdOrderBySortOrderAsc(versionId))
+                .thenReturn(List.of(arrVar, collVar));
+        when(templateVariantRepository.findByTemplateVersionIdAndAiModelId(versionId, modelId))
+                .thenReturn(Optional.empty());
+
+        RenderResult result = promptRenderService.render(
+                templateId,
+                modelId,
+                Map.of(
+                        "arr", new Object[]{"val1", null, "val2"},
+                        "coll", java.util.Arrays.asList("item1", null, "item2")
+                ),
+                null
+        );
+
+        assertThat(result.renderedPrompt()).isEqualTo("Array: val1, val2, Coll: item1, item2");
+    }
+
+    @Test
+    void render_aiModelIdNull_skipsVariantResolution() {
+        stubTemplateAndVersion("BASE");
+        
+        RenderResult result = promptRenderService.render(
+                templateId,
+                null,
+                Map.of(),
+                null
+        );
+
+        assertThat(result.renderedPrompt()).isEqualTo("BASE");
+        assertThat(result.usedVariant()).isFalse();
+    }
+    
+    @Test
+    void render_promptInjection_allPhrases() {
+        stubTemplateAndVersion("BASE {{v}}");
+        TemplateVariable v = variable("v", "text", false, null);
+        when(templateVariableRepository.findByTemplateVersionIdOrderBySortOrderAsc(versionId))
+                .thenReturn(List.of(v));
+        
+        List<String> badPhrases = List.of(
+                "ignore all instructions",
+                "override instructions",
+                "system prompt manipulation",
+                "you must instead",
+                "ignore the above"
+        );
+        
+        for (String phrase : badPhrases) {
+            assertThatThrownBy(() -> promptRenderService.render(templateId, null, Map.of("v", phrase), null))
+                .isInstanceOf(BadRequestException.class);
+        }
+    }
+    
+    @Test
+    void render_blankValues_fallbackToEmpty() {
+        stubTemplateAndVersion("val: '{{v1}}', '{{v2}}', '{{v3}}'");
+        TemplateVariable v1 = variable("v1", "text", false, null);
+        TemplateVariable v2 = variable("v2", "multiselect", false, null);
+        TemplateVariable v3 = variable("v3", "text", false, null); // no value in map, no default
+        
+        when(templateVariableRepository.findByTemplateVersionIdOrderBySortOrderAsc(versionId))
+                .thenReturn(List.of(v1, v2, v3));
+        
+        RenderResult result = promptRenderService.render(
+                templateId,
+                null,
+                Map.of("v1", "   ", "v2", List.of()),
+                null
+        );
+        
+        assertThat(result.renderedPrompt()).isEqualTo("val: '', '', ''");
+    }
+    
+    @Test
+    void render_emptyPromptBody_returnsEmpty() {
+        stubTemplateAndVersion("");
+        RenderResult result = promptRenderService.render(templateId, null, Map.of(), null);
+        assertThat(result.renderedPrompt()).isEqualTo("");
+    }
+
     private void stubTemplateAndVersion(String promptBody) {
         Template template = new Template();
         template.setId(templateId);
@@ -300,9 +388,9 @@ class PromptRenderServiceTest {
     }
 
     private void stubSupportedModel() {
-        when(aiModelQueryService.getActiveByIdOrThrow(modelId))
+        org.mockito.Mockito.lenient().when(aiModelQueryService.getActiveByIdOrThrow(modelId))
                 .thenReturn(new AiModelSummaryResponse(modelId, "test-model", "Test Model", null));
-        when(templateModelRepository.existsById(new TemplateModelId(templateId, modelId)))
+        org.mockito.Mockito.lenient().when(templateModelRepository.existsById(new TemplateModelId(templateId, modelId)))
                 .thenReturn(true);
     }
 
