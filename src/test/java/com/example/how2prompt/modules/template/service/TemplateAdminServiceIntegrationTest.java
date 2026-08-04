@@ -75,6 +75,9 @@ class TemplateAdminServiceIntegrationTest {
     @Autowired
     private WorkspaceRepository workspaceRepository;
 
+    @Autowired
+    private org.springframework.boot.jpa.test.autoconfigure.TestEntityManager entityManager;
+
     private AuthenticatedUser currentUser;
 
     @BeforeEach
@@ -175,5 +178,28 @@ class TemplateAdminServiceIntegrationTest {
 
         TemplateResponse publishResponse = templateAdminService.updateTemplate(createResponse.id(), updateRequest);
         assertThat(publishResponse.status()).isEqualTo("published");
+    }
+
+    @Test
+    void deleteTemplate_softDeletesTemplate() {
+        CreateTemplateRequest createRequest = new CreateTemplateRequest();
+        createRequest.setSlug("test-delete-template");
+        createRequest.setTitleI18n(Map.of("en", "Test Delete"));
+        createRequest.setPromptBody("Say hello to {{name}}");
+
+        TemplateResponse created = templateAdminService.createTemplate(createRequest, currentUser);
+
+        templateAdminService.deleteTemplate(created.id());
+
+        // Flush and clear persistence context to force checking SQL restrictions
+        entityManager.flush();
+        entityManager.clear();
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.example.how2prompt.common.exception.ResourceNotFoundException.class,
+                () -> templateAdminService.updateTemplate(created.id(), new UpdateTemplateRequest())
+        );
+
+        assertThat(templateRepository.findById(created.id())).isEmpty();
     }
 }
