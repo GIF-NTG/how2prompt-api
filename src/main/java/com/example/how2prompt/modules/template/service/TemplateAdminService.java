@@ -205,6 +205,16 @@ public class TemplateAdminService {
         return toVariantResponse(variant);
     }
 
+    /**
+     * Soft delete a template by setting its deleted_at timestamp.
+     */
+    @Transactional
+    public void deleteTemplate(UUID templateId) {
+        Template template = getTemplateOrThrow(templateId);
+        template.setDeletedAt(Instant.now());
+        templateRepository.save(template);
+    }
+
     // -------------------------------------------------------------------------
     // Versioning helpers — luôn clear is_current cũ trước khi set true (partial unique index)
     // -------------------------------------------------------------------------
