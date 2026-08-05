@@ -5,15 +5,12 @@ import com.example.how2prompt.common.exception.UnauthorizedException;
 import com.example.how2prompt.config.AuthProperties;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.gson.GsonFactory;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,19 +25,8 @@ public class GoogleIdTokenService {
 
     private final AuthProperties authProperties;
 
+    @Autowired(required = false)
     private GoogleIdTokenVerifier verifier;
-
-    @PostConstruct
-    void initVerifier() {
-        if (!StringUtils.hasText(authProperties.getGoogleClientId())) {
-            log.warn("how2prompt.auth.google-client-id chưa cấu hình — Google OAuth sẽ từ chối mọi request.");
-            this.verifier = null;
-            return;
-        }
-        this.verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), GsonFactory.getDefaultInstance())
-                .setAudience(Collections.singletonList(authProperties.getGoogleClientId()))
-                .build();
-    }
 
     public GoogleIdToken.Payload verify(String idToken) {
         if (!StringUtils.hasText(authProperties.getGoogleClientId()) || verifier == null) {
