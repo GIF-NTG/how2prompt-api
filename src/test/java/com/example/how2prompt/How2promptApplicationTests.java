@@ -36,4 +36,12 @@ class How2promptApplicationTests {
 	void contextLoads() {
 	}
 
+	@Test
+	void mainMethodTest() {
+		try (org.mockito.MockedStatic<org.springframework.boot.SpringApplication> mocked = org.mockito.Mockito.mockStatic(org.springframework.boot.SpringApplication.class)) {
+			How2promptApplication.main(new String[]{});
+			mocked.verify(() -> org.springframework.boot.SpringApplication.run(How2promptApplication.class, new String[]{}));
+		}
+	}
+
 }
